@@ -4,7 +4,7 @@
 
 연말정산 및 청년 세제 혜택에 관한 질문에 답변하고, RAG(Retrieval-Augmented Generation)를 이용해 관련 참고 자료를 검색하여 AI 답변을 생성하도록 설계합니다.
 
-> **현재 상태:** FastAPI Health API와 ChatOllama 연결 모듈 구현 / RAG·질문 API·Spring Boot 연동 개발 예정
+> **현재 상태:** Health·ChatOllama·내부 API/인증 골격 구현. RAG 미구현으로 실제 상담·추천 POST는 정상 인증 후 `503 RAG_NOT_READY`. Spring Boot 연동은 예정.
 
 ## 1. 개발 환경
 
@@ -301,3 +301,28 @@ $env:OLLAMA_MODEL = 'gemma3:4b'
 단위 테스트는 모델 생성자를 Mock으로 대체하므로 실제 Ollama 없이 실행합니다.
 기존 Health 테스트를 포함해 19개 통과했으며, 실제 `gemma3:4b` 호출은 별도로 `OK`를 확인했습니다.
 RAG·세법 정확성·동시성·서버 간 인증은 이번에 구현하거나 검증하지 않았습니다.
+
+## 11. 내부 API와 현재 동작 범위
+
+`POST /internal/chat-responses`, `POST /internal/recommendations`는 내부 DTO와
+`X-Chatbot-Token` 인증을 적용합니다. 공통 응답 봉투와 `errorId`는 적용하지 않습니다.
+camelCase·엄격한 금액 타입·질문/이력 상한을 검증합니다. 계약과 보류 사항은
+`docs/03_API_계약_초안.md` 상단을 확인하세요. 위 10절의 인증 미검증 기록은 첫 구현 당시 기록입니다.
+
+```powershell
+# 실제 비밀값은 OS 환경에서 관리하고 저장소에 기록하지 않습니다.
+$env:CHATBOT_API_TOKEN = '<로컬에서만 설정할 비밀값>'
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8001
+```
+
+서버 토큰 미설정·빈 값이면 시작 시 오류 로그를 남기고 내부 POST는 503
+`AUTH_NOT_CONFIGURED`로 차단합니다. 서버는 시작하며 `/health`는 유지됩니다.
+헤더 누락·불일치는 401 `INTERNAL_UNAUTHORIZED`, 유효하지 않은 DTO는 422
+`VALIDATION`입니다. 정상 인증·유효 입력도 현재는 503 `RAG_NOT_READY`입니다.
+실제 요청에서 가상 답변을 반환하는 설정은 없습니다. 검색·모델 정상 생성 테스트는
+의존성 대체로만 수행하며 운영 설정에서 활성화하지 않습니다.
+
+초기 모델/서비스 대기 제한은 45/50초입니다. 실제 시간값의 적절성·전체 HTTP 처리
+시간·추론 취소는 미검증입니다. 동기 호출은 제한 응답 후에도 계속될 수 있고,
+실제 작업 종료까지 프로세스별 모델 슬롯을 점유합니다. 세법·생성 숫자 검증,
+Oracle 저장·출처 영구 보존·추천 작업 상태 관리는 아직 구현하지 않았습니다.

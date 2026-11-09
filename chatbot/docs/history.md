@@ -1,3 +1,12 @@
+### [2026-11-09] FastAPI 내부 상담·추천 API와 인증 골격 구현
+- **작업 내용**: `app/api/chat.py`, `recommendations.py`, `dependencies.py`에 두 내부 POST와 서비스 주입을 추가했다. `app/schemas/common.py`, `chat.py`, `recommendation.py`와 패키지 초기화 파일에 엄격한 camelCase DTO를 추가했다. `app/core/security.py`, `errors.py`, 기존 `config.py`에 내부 인증·오류·초기 대기 제한 설정을 구성했다. `app/services/generation.py`, `chat_service.py`, `recommendation_service.py`와 패키지 초기화 파일에 검색/모델 호출 경계와 상담·추천 흐름을 추가했다. `app/main.py`에 라우터·안전한 오류 응답·토큰 미설정 시작 로그를 등록했다. `tests/test_internal_api.py`, `tests/test_generation.py`를 추가하고 `.env.example`, `README.md`, `docs/03_API_계약_초안.md`를 갱신했다.
+- **변경 사유**: 기존 ChatOllama와 Health를 보존하면서 내부 계약과 오류 처리를 독립 검증하기 위함이다. RAG 미구현을 숨기지 않고 기본 서비스는 정상 인증 후 503 RAG_NOT_READY를 반환한다. 실제 요청에 Mock 답변을 제공하는 설정은 없다. 토큰 미설정은 별도 AUTH_NOT_CONFIGURED로 차단한다. Spring/React/Calc 및 DB·ERD는 수정하지 않았다.
+- **검증 결과**: Python 3.11.9의 기존 `chatbot/.venv/Scripts/python.exe`로 `-m ruff check .` 통과, `-m ruff format --check .` 통과(41개 파일), `-m pytest -v` 76개 통과(1.29초). 기존 Health/ChatOllama 19개와 신규 57개를 포함한다. 정상 Mock 생성·인증 거부·토큰 미설정 시작 로그·엄격한 DTO·모델 장애·RAG 장애·입력/예외 비노출·출처 메타데이터·음수 계산값 보존·추천 절세액 필드 금지·짧은 Mock 대기 제한·처리 중 추가 모델 호출 거부를 검증했다. 실제 Elasticsearch·새 API의 실모델 통합 호출·Oracle·Spring 응답 봉투/errorId는 실행하지 않았다.
+- **확정 및 보류**: 성공 문답 쌍 저장, 계산 선커밋 후 독립 추천, 검증되지 않은 SAVING_AMOUNT=NULL 정책을 계약 문서에 기록했다. 타인 데이터 403 사용자 결정은 최신 팀 PDF의 404 규칙과 충돌하여 Backend 적용을 보류한다. 출처 보존은 부모별 JSON CLOB 컬럼을 우선 제안하되 DDL은 작성하지 않았다. 추천 생성 PENDING/RUNNING/COMPLETED/FAILED·유일 작업키·시도 횟수·작업 버전/기한을 갖는 영구 상태 구조도 설계안으로만 기록했다.
+- **미해결 사항**: 모델 45초/서비스 50초/기존 Spring 60초는 초기 제안값이며 실제 시간값·성능·추론 취소는 미검증이다. 서비스 50초는 업로드·검증·직렬화를 포함한 전체 HTTP 제한이 아니다. 동기 호출은 제한 응답 후에도 계속될 수 있으며 프로세스별 슬롯은 실제 작업 종료까지 유지한다. 다중 워커 전체 동시성·강제 취소는 미구현이다. 프롬프트의 재계산 금지는 생성 문장 전체의 숫자·법령 정확성을 보증하지 않는다. 실제 RAG·출처 영구 저장·추천 상태·메시지 저장은 미구현이다. 로컬 기능명세 PDF의 F-05-01은 확인했으나 v1.13 동일성 표시는 미확인이다.
+- **다음 작업**: 실제 PDF/Elasticsearch 검색과 출처 검증을 구현하고 생성 내용 검증을 보강한다. 팀 권한 정책 충돌과 DB 출처/작업 상태 구조를 협의한 뒤 Backend 트랜잭션·중복 방지·공통 503/errorId 연동을 별도 승인 범위에서 진행한다.
+- **Git**: 기존 AGENTS 및 착수 문서의 사용자 변경을 보존했다. 커밋·Push를 수행하지 않았다.
+
 ### [2026-11-09] ChatOllama와 로컬 Gemma 3 4B 최소 연결
 - **작업 내용**: `app/core/config.py`와 패키지 초기화 파일에 OS 환경변수 설정을 추가하고, `app/llm/ollama.py`와 패키지 초기화 파일에 ChatOllama 호출 및 오류 분류를 구현했다. `tests/test_ollama.py`에 Mock 테스트 18개를 추가했다. `requirements.txt`에 검증한 의존성을 기록하고 `.env.example`, `README.md`를 갱신했다. 기존 `app/main.py`, Health 라우터와 Health 테스트는 변경하지 않았다.
 - **변경 사유**: RAG나 외부 API 계약을 추가하기 전에 로컬 모델 호출과 실패 처리를 독립적으로 검증하기 위함이다. 외부 추적은 호출 구간에서 비활성화하고 원본 질문·응답 및 서버 오류 내용을 로그에 남기지 않는다.

@@ -5,6 +5,17 @@ import os
 from pydantic import BaseModel, ConfigDict, HttpUrl, field_validator
 
 
+class InternalApiSettings(BaseModel):
+    """토큰은 출력하지 않으며 OS 환경변수만 사용한다."""
+
+    model_timeout: float = 45.0
+    request_timeout: float = 50.0
+
+    @staticmethod
+    def token() -> str:
+        return os.environ.get("CHATBOT_API_TOKEN", "")
+
+
 class OllamaSettings(BaseModel):
     model_config = ConfigDict(frozen=True)
 

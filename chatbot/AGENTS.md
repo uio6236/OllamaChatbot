@@ -375,3 +375,11 @@ RAG·LLM 기능을 추가한 경우에는 해당 기능의 테스트 결과도 �
 - Ollama·LangChain 등의 처리 대기 중 Oracle DB 트랜잭션을 유지하지 않는다. AI 첫 안내 생성 실패가 이미 성공한 세액 계산 결과 저장을 롤백하게 만들지 않는다.
 - 통합 테스트에는 타 회원 대화방 접근 차단, 질문·답변과 상담 이력 저장, 최초 절세 안내 생성, 법령 출처 확인, AI 서버 중단 및 시간 초과 상황을 포함한다.
 - 모델 호출 추적·관측 도구를 도입할 경우, 질문·계산 금액 등 민감한 입력이 외부 추적 서비스로 자동 전송되지 않도록 기본 설정과 전송 경로를 확인한다.
+
+
+## 2026-11-09 개정 팀 API 응답 규칙 추가
+
+- React ↔ Spring Boot의 사용자용 JSON API는 팀 공통 `ApiResponse<T>` 형식인 `{success, data, meta, error}` 봉투로 응답한다. 성공 시 실제 데이터는 `data`에 담고, 목록의 페이지 정보는 `meta`에 담는다. React에서는 공통 `apiRequest()`의 봉투 해제 처리를 우선 확인하고 중복 해제하지 않는다.
+- Spring Boot ↔ Chatbot FastAPI의 내부 API는 공통 응답 봉투를 사용하지 않는다. FastAPI는 내부 요청·응답 DTO를 반환하고, Spring Boot가 이를 사용자용 공통 응답·오류 형식으로 변환한다.
+- 사용자용 오류 상태·코드는 개정 「희망환급 API 공통 규칙」을 따른다. 특히 HTTP 415는 `UNSUPPORTED_MEDIA_TYPE`이며, HTTP 500·503은 `error.errorId`를 포함한다. `errorId`는 Spring Boot 공통 `GlobalExceptionHandler`에서 생성하고 동일한 번호를 서버 로그에 남기며, FastAPI가 임의로 생성하거나 화면에 내부 상세 오류를 노출하지 않는다. HTTP 504 처리 정책은 팀 문서에 명시되지 않았으므로 임의로 확정하지 않는다.
+- `ApiResponse`, `PageMeta`, `GlobalExceptionHandler`, 프론트엔드 `apiRequest()`의 실제 구현이 존재하는지 최신 팀 코드를 먼저 확인하고 재사용한다. 동일 공통 기능을 중복 구현하지 않으며, 공통 예외 처리기 등 다른 기능에도 영향을 주는 수정은 팀 코드 리뷰를 거친다.
