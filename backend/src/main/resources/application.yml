@@ -1,0 +1,46 @@
+# Spring Boot 서버 실행 포트
+server:
+  port: ${SERVER_PORT:8080}
+
+# Spring Boot 프로젝트 이름
+spring:
+  application:
+    name: hope-refund-backend
+# 오류 응답에 내부 정보 노출 방지
+  web:
+    error:
+      include-stacktrace: never
+
+# Oracle DB 연결 설정
+# 실제 접속 정보는 로컬 환경변수에서 가져옴.
+# 환경 변수 설정 Run → Run Configurations → Spring Boot App → 해당 프로젝트 → Environment → add
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: oracle.jdbc.OracleDriver
+
+# MyBatis Mapper XML 및 컬럼 매핑 설정
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  configuration:
+# ex. MEMBER_ID → memberId 자동 매핑
+    map-underscore-to-camel-case: true
+    jdbc-type-for-null: 'NULL'
+
+# Python 계산 서버 연결 설정
+# TODO: CalcClient 구현 후 실제 서버 연동 및 토큰 인증 검증
+calc:
+  base-url: ${CALC_BASE_URL:http://localhost:8000}
+  api-token: ${CALC_API_TOKEN:}
+  connect-timeout: 3s ## 시간 설정들은 개발하면서 맞게 수정 필요 임의로 해둔 것.
+  read-timeout: 10s
+
+# Python AI 챗봇 서버 연결 설정
+# Gemma3 + RAG 기반 AI 답변 생성에 사용
+# TODO: 챗봇 서버 구현 후 실제 API 주소 및 인증 방식 확정
+chatbot:
+  base-url: ${CHATBOT_BASE_URL:http://localhost:8001}
+  api-token: ${CHATBOT_API_TOKEN:}
+  connect-timeout: 3s
+  read-timeout: 60s

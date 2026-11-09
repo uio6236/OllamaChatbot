@@ -1,0 +1,588 @@
+{
+  "sourceUrl": "https://hope-refund-young.uio8130.chatgpt.site",
+  "siteVersion": 10,
+  "sourceCommit": "8113b52711cd46caf1d1e2c25bb51545599f16ab",
+  "mappings": [
+    {
+      "original": "components/Dashboard.tsx",
+      "target": "src/pages/dashboard/Dashboard.jsx",
+      "sha256": "2a7ce9d377ca3eb0a9ee770aa987aec67d0d6717dfbb597694ffe282594de4a3"
+    },
+    {
+      "original": "components/TaxInfoForm.tsx",
+      "target": "src/pages/tax/TaxInfoForm.jsx",
+      "sha256": "80fd2e29990139af7402d66d1602fb9c2587db1e283e13d3caf0848d1f10a7d8"
+    },
+    {
+      "original": "components/GroupStats.tsx",
+      "target": "src/pages/statistics/GroupStats.jsx",
+      "sha256": "fdd5d364c537d70cf950b808600f534a0faf65717e5b086ace99b8e204965de6"
+    },
+    {
+      "original": "components/AccountForms.tsx",
+      "target": "src/pages/auth/AccountForms.jsx",
+      "sha256": "834ace38b2fd65f32e67b3c0ca44e1b99591e9902ee280060d3f21069d528d2b"
+    },
+    {
+      "original": "components/AdminTools.tsx",
+      "target": "src/pages/admin/AdminTools.jsx",
+      "sha256": "03673a954005f82b2e49d7a9e3ec182a4ea70d7926112e846e5f9b66b50b8eca"
+    },
+    {
+      "original": "components/ProfileDetails.tsx",
+      "target": "src/pages/profile/ProfileDetails.jsx",
+      "sha256": "dcbf088780af10ea6132a955eb7d2029bfdb90408b3cac1000c290b79210b578"
+    },
+    {
+      "original": "components/ChatPanel.tsx",
+      "target": "src/pages/chatbot/ChatPanel.jsx",
+      "sha256": "dfc9367e1fb7126dfdeefb51f5fcde03e13f924623e5470c415c26e859da16df"
+    },
+    {
+      "original": "components/ExpenseUpload.tsx",
+      "target": "src/components/expense/ExpenseUpload.jsx",
+      "sha256": "ba4e6dccfde217486926044f64241352d51c6984ed0427afe2f0ccbaf8a07361"
+    },
+    {
+      "original": "lib/services.ts",
+      "target": "src/api/services.js",
+      "sha256": "57e5071eaafbdd6c6945eedcec0705610ee9ee452ffb265659f9bb10f231cc0b"
+    },
+    {
+      "original": "lib/account-service.ts",
+      "target": "src/api/account-service.js",
+      "sha256": "391efe92a4e5208e7047bf1d0b5a36644b44f626bda71eecf4ecd00c2b00f7ed"
+    },
+    {
+      "original": "lib/expense-service.ts",
+      "target": "src/api/expense-service.js",
+      "sha256": "b462119e832008b6c76d09ceb7d83d4e5c410c27fd6afca55d7bff3e73405a02"
+    },
+    {
+      "original": "lib/prototype-records.ts",
+      "target": "src/api/prototype-records.js",
+      "sha256": "1af0818e3ec76a0bc31866c4797c2f139dc9570bdc1a816d48e88793a27075c3"
+    },
+    {
+      "original": "lib/erd-contract.ts",
+      "target": "src/api/erd-contract.js",
+      "sha256": "36b89078030b83c83e758c409ad657b29a06742cbff54928e8d5a3c875c83186"
+    },
+    {
+      "original": "lib/dashboard-model.ts",
+      "target": "src/utils/dashboard-model.js",
+      "sha256": "3fb7ae3d33537df9d62e92447f22cab4029253ef93255a44c2257a66dc449497"
+    },
+    {
+      "original": "lib/group-model.ts",
+      "target": "src/utils/group-model.js",
+      "sha256": "64f47158b395c2156ef0fb06c86776b3b7a79e09bff095ce93a8182b8c53e4f3"
+    },
+    {
+      "original": "lib/utils.ts",
+      "target": "src/utils/cn.js",
+      "sha256": "53f3d3d070f0a9082934da25b875f9499855c2b0693868dd28be8c23d8730f68"
+    },
+    {
+      "original": "components/ui/accordion.tsx",
+      "target": "src/components/ui/accordion.jsx",
+      "sha256": "a4f153089ba886dfcf73fac26b5c01ca933fa12fbe88df6fb723912bfffdfbb0"
+    },
+    {
+      "original": "components/ui/alert-dialog.tsx",
+      "target": "src/components/ui/alert-dialog.jsx",
+      "sha256": "9a8d950f2b9b4352d5ebb762fb44d5c28c2d353aa29712071973656a8736e311"
+    },
+    {
+      "original": "components/ui/alert.tsx",
+      "target": "src/components/ui/alert.jsx",
+      "sha256": "2cc59b5f7bda91c1670884b1bf46bfc8a2a6f226cef184f5762acc037188885b"
+    },
+    {
+      "original": "components/ui/aspect-ratio.tsx",
+      "target": "src/components/ui/aspect-ratio.jsx",
+      "sha256": "b1c157886236782cb92d8fbcd4749532aaf6d8aabefd6e157ca40358f902f407"
+    },
+    {
+      "original": "components/ui/attachment.tsx",
+      "target": "src/components/ui/attachment.jsx",
+      "sha256": "ae8a25dd1a896d3964e3ef54d97e51221b418cde287dfd794428b89951c5c790"
+    },
+    {
+      "original": "components/ui/avatar.tsx",
+      "target": "src/components/ui/avatar.jsx",
+      "sha256": "58a846bf1617b94b9681921db9b8461d0145f311424663d11678a06b6153cb34"
+    },
+    {
+      "original": "components/ui/badge.tsx",
+      "target": "src/components/ui/badge.jsx",
+      "sha256": "46a0de5224f6a5d5d63d45246534288518dce888f031064bff925bbc7fe6ad97"
+    },
+    {
+      "original": "components/ui/breadcrumb.tsx",
+      "target": "src/components/ui/breadcrumb.jsx",
+      "sha256": "d4c0831bba2212e778248f54a6ace6ef378df8bba4616d1abf27787a31eabae5"
+    },
+    {
+      "original": "components/ui/bubble.tsx",
+      "target": "src/components/ui/bubble.jsx",
+      "sha256": "870cc0c5cfc8a515053f7e41e706a6bd017a909b45f1305fd3b164a52cc4483b"
+    },
+    {
+      "original": "components/ui/button-group.tsx",
+      "target": "src/components/ui/button-group.jsx",
+      "sha256": "784c89d8ee683e1bc972ae69e6ea8225a7f63abe22aa1b5fc3423ae8a2a399c0"
+    },
+    {
+      "original": "components/ui/button.tsx",
+      "target": "src/components/ui/button.jsx",
+      "sha256": "cc36af0f8b5019c33cc039fbf03bb952a513072b15b55b53c592b78af3e5f4c4"
+    },
+    {
+      "original": "components/ui/calendar.tsx",
+      "target": "src/components/ui/calendar.jsx",
+      "sha256": "3855fbe0d3f8ad3a4b93071f98b76a9f6782d46ec8b05f5d2ddbee1e4e39bc84"
+    },
+    {
+      "original": "components/ui/card.tsx",
+      "target": "src/components/ui/card.jsx",
+      "sha256": "c48dd3b96be90a7066f1aebf294f0af9d00ebcdc367d5d4aca55429ade570c1c"
+    },
+    {
+      "original": "components/ui/carousel.tsx",
+      "target": "src/components/ui/carousel.jsx",
+      "sha256": "b7ea0dda3903d972c186f739e23da61f547bc83b5a0bf13b16856577846d5fc3"
+    },
+    {
+      "original": "components/ui/chart.tsx",
+      "target": "src/components/ui/chart.jsx",
+      "sha256": "45aa5ea4a386f4fb5b8869ff4bab3a08cf89255190ee322043baf84c3e950b6a"
+    },
+    {
+      "original": "components/ui/checkbox.tsx",
+      "target": "src/components/ui/checkbox.jsx",
+      "sha256": "b23ab9d4deeedf2ac8f512c368361ede681aa383437ef48563a6f9b7dbe95f27"
+    },
+    {
+      "original": "components/ui/collapsible.tsx",
+      "target": "src/components/ui/collapsible.jsx",
+      "sha256": "c6598e5584f4258b5d9fefadbc5ad6a66888ad58729f4b634a0bb2d9c513188b"
+    },
+    {
+      "original": "components/ui/combobox.tsx",
+      "target": "src/components/ui/combobox.jsx",
+      "sha256": "2d68e78b2dc7e38a085f222dede60a80b4f8229a6e91732c484605e204d46735"
+    },
+    {
+      "original": "components/ui/command.tsx",
+      "target": "src/components/ui/command.jsx",
+      "sha256": "361193df1e3d64a9e9b5048f045264782fcb387aab3f00f2b805fdcbf538b16a"
+    },
+    {
+      "original": "components/ui/context-menu.tsx",
+      "target": "src/components/ui/context-menu.jsx",
+      "sha256": "2cf1fcf59df0649a3e2a126d1df2f639145f6b6bf5689ee54af1f40ab1245017"
+    },
+    {
+      "original": "components/ui/dialog.tsx",
+      "target": "src/components/ui/dialog.jsx",
+      "sha256": "dce39c6adc47d997bd2567f8b7a72f466b0134715105cd42f9194007b8ecdb14"
+    },
+    {
+      "original": "components/ui/direction.tsx",
+      "target": "src/components/ui/direction.jsx",
+      "sha256": "84ae2ad658207f0e0f367978e5508cd8027cd00c29c41d3d13db21a708c3d1e6"
+    },
+    {
+      "original": "components/ui/drawer.tsx",
+      "target": "src/components/ui/drawer.jsx",
+      "sha256": "cb6eaf58eb0757ca91af284e5d925b89a42ad7eb19cb3f44c575a3487aa9350f"
+    },
+    {
+      "original": "components/ui/dropdown-menu.tsx",
+      "target": "src/components/ui/dropdown-menu.jsx",
+      "sha256": "98f0dcdae38225b73734aceeb9213dd751fea2c72ea520df31003cd133deac8a"
+    },
+    {
+      "original": "components/ui/empty.tsx",
+      "target": "src/components/ui/empty.jsx",
+      "sha256": "ae95bdcf367a076ae02e7925f14522a148798f72d9651749c6d55497dba584c0"
+    },
+    {
+      "original": "components/ui/field.tsx",
+      "target": "src/components/ui/field.jsx",
+      "sha256": "ba67d76f017ac059fc86cf8c344e0b2991c4322d3619e125498c19b87f6eefbd"
+    },
+    {
+      "original": "components/ui/form.tsx",
+      "target": "src/components/ui/form.jsx",
+      "sha256": "315b46bb75ab7d1c6061b5d750aa4bedf6e7a455e15e2d7f9182f053d5972b1e"
+    },
+    {
+      "original": "components/ui/hover-card.tsx",
+      "target": "src/components/ui/hover-card.jsx",
+      "sha256": "f5d8df42c59370ec14d61bcc54f7d68e9bb7dfa0d6a872b2f7cffc2aafbf23b8"
+    },
+    {
+      "original": "components/ui/input-group.tsx",
+      "target": "src/components/ui/input-group.jsx",
+      "sha256": "6afbd58fea4c438e6252dc4568bddc122e84ababead4ad5cee50ace01100c9a0"
+    },
+    {
+      "original": "components/ui/input-otp.tsx",
+      "target": "src/components/ui/input-otp.jsx",
+      "sha256": "161946daa89f0eda2575b9271c0494e35807c4ffb55598a49f67160c17fec299"
+    },
+    {
+      "original": "components/ui/input.tsx",
+      "target": "src/components/ui/input.jsx",
+      "sha256": "8c4612a7c41319ac5049daa3b34b080f9784b6245c17780eb87c127e58e473db"
+    },
+    {
+      "original": "components/ui/item.tsx",
+      "target": "src/components/ui/item.jsx",
+      "sha256": "6e2144d6d87142dbbe56d568810bf546318c8aa661447ebb0d76ebbf382cb45f"
+    },
+    {
+      "original": "components/ui/kbd.tsx",
+      "target": "src/components/ui/kbd.jsx",
+      "sha256": "6088c3a5432338b1719c17e9b5d0e1fa74fd1f66060f248fc88909d33a82cd13"
+    },
+    {
+      "original": "components/ui/label.tsx",
+      "target": "src/components/ui/label.jsx",
+      "sha256": "a476e41f08b9de5bd447de66a33d8bc2ad18f2fa6b96c064778bab4b6f439f4c"
+    },
+    {
+      "original": "components/ui/marker.tsx",
+      "target": "src/components/ui/marker.jsx",
+      "sha256": "3d798763f094b2bb5e7ade2d5cd1b9bab498bc8ca7fd4cfaf4e5835bdedc34a0"
+    },
+    {
+      "original": "components/ui/menubar.tsx",
+      "target": "src/components/ui/menubar.jsx",
+      "sha256": "9243af8afcea03703398ccd1c2a8c0a87ad6cbaf2bd272fb609f5b79fe46aebb"
+    },
+    {
+      "original": "components/ui/message-scroller.tsx",
+      "target": "src/components/ui/message-scroller.jsx",
+      "sha256": "bb7660a248e4e9589c3816c7c1c199ea1381a70d2c8476ae895b567a7a4d86cf"
+    },
+    {
+      "original": "components/ui/message.tsx",
+      "target": "src/components/ui/message.jsx",
+      "sha256": "9d2952bf3b641081f09aa2739535e6bbd1be0a4946789752a2c20d8aaef43185"
+    },
+    {
+      "original": "components/ui/native-select.tsx",
+      "target": "src/components/ui/native-select.jsx",
+      "sha256": "007516b111fca8c98a6c40c94ab91bb68cc5b52afce1ed1f5e510c3d86e7347c"
+    },
+    {
+      "original": "components/ui/navigation-menu.tsx",
+      "target": "src/components/ui/navigation-menu.jsx",
+      "sha256": "889d358a77de88e9cb6f39ea4895ea4c76eaf01d731b74e44f1c41e97a78a044"
+    },
+    {
+      "original": "components/ui/pagination.tsx",
+      "target": "src/components/ui/pagination.jsx",
+      "sha256": "374ad135c3d4ff3ec080a0009cd9745cdd0e12faa89d2b0e86074f11e5127fd1"
+    },
+    {
+      "original": "components/ui/popover.tsx",
+      "target": "src/components/ui/popover.jsx",
+      "sha256": "31c350309ff5d3034e6ecf1b0eda75ba8855bdbf987fc7ad6d71f0ef07c5a447"
+    },
+    {
+      "original": "components/ui/progress.tsx",
+      "target": "src/components/ui/progress.jsx",
+      "sha256": "c8c26e8f5f041c3cdf4915347dc1d9c022f9448f149990fadcaf303e952fa57d"
+    },
+    {
+      "original": "components/ui/radio-group.tsx",
+      "target": "src/components/ui/radio-group.jsx",
+      "sha256": "fe5ce39636d0818c2bf9c4eebddff893d1225fa2c81b5fa4bb8cbb39a8c913ce"
+    },
+    {
+      "original": "components/ui/resizable.tsx",
+      "target": "src/components/ui/resizable.jsx",
+      "sha256": "bc63958467aa00557c551bb0d96a5ae4c965c1e1ba2380e595949d933b132f7c"
+    },
+    {
+      "original": "components/ui/scroll-area.tsx",
+      "target": "src/components/ui/scroll-area.jsx",
+      "sha256": "8bd9d986b2844c9a87de825c6de4787b6739b36c3dc9a05ccf3eb107160e4043"
+    },
+    {
+      "original": "components/ui/select.tsx",
+      "target": "src/components/ui/select.jsx",
+      "sha256": "0b796a108a4eb5ba52d9ad938b7aea36dc56ae66c703a6d0a23dbc24f96daff3"
+    },
+    {
+      "original": "components/ui/separator.tsx",
+      "target": "src/components/ui/separator.jsx",
+      "sha256": "6da346505c8629a4668420d2a5ca48891383bbe0b0ceb14163537c671879427e"
+    },
+    {
+      "original": "components/ui/sheet.tsx",
+      "target": "src/components/ui/sheet.jsx",
+      "sha256": "63863cf2df8f8973e52b3459ac9bdbf81be1262dbc70eb53d5271ffb03488e16"
+    },
+    {
+      "original": "components/ui/sidebar.tsx",
+      "target": "src/components/ui/sidebar.jsx",
+      "sha256": "4a8d73e7730a2b1fcecfca31299ed26db65c2307b84197a59c6ec7c01c7ad28e"
+    },
+    {
+      "original": "components/ui/skeleton.tsx",
+      "target": "src/components/ui/skeleton.jsx",
+      "sha256": "ba48dd5be5a6a1378bd4e011028654b5bf419f1e7d20ee4b9f8330c1264e7239"
+    },
+    {
+      "original": "components/ui/slider.tsx",
+      "target": "src/components/ui/slider.jsx",
+      "sha256": "0e37484f4b416e79ac18c655cac961aefacf6e67085cfc2b320ea8af545635a3"
+    },
+    {
+      "original": "components/ui/sonner.tsx",
+      "target": "src/components/ui/sonner.jsx",
+      "sha256": "13ccc9b0fe4248e622f83a1d3b2f0566b72b5e04162d7d0c8db8945ecc71b55f"
+    },
+    {
+      "original": "components/ui/spinner.tsx",
+      "target": "src/components/ui/spinner.jsx",
+      "sha256": "3e6e6e8d37fb4069f8e43e55318f8db06fbc36e6c8be0096da3c9337c1c798b9"
+    },
+    {
+      "original": "components/ui/switch.tsx",
+      "target": "src/components/ui/switch.jsx",
+      "sha256": "386d4d4deb39f34126f9700fe9bf5393d238485dd94018bba9d154dda84c62ae"
+    },
+    {
+      "original": "components/ui/table.tsx",
+      "target": "src/components/ui/table.jsx",
+      "sha256": "20e5a7f224959c6b75802995706a97e9da171f693d4b6b1b436388fcd9df96f3"
+    },
+    {
+      "original": "components/ui/tabs.tsx",
+      "target": "src/components/ui/tabs.jsx",
+      "sha256": "865d0194331b9b2be36723fa79d3575dc83078b4cb941cafee87cb72fc2cff46"
+    },
+    {
+      "original": "components/ui/textarea.tsx",
+      "target": "src/components/ui/textarea.jsx",
+      "sha256": "253cdeb487c73beaaccdf47fc163e36e7d5b7ae6ddf09a4f64998a109a112979"
+    },
+    {
+      "original": "components/ui/toggle-group.tsx",
+      "target": "src/components/ui/toggle-group.jsx",
+      "sha256": "69f643e889e933f05c1439084480d8646f66a161c7d1cf0730ee926382ade35e"
+    },
+    {
+      "original": "components/ui/toggle.tsx",
+      "target": "src/components/ui/toggle.jsx",
+      "sha256": "ba4d0b0a2b2fee75dc36dfc19e32082e721024b919050c97fd5dc70faa924e16"
+    },
+    {
+      "original": "components/ui/tooltip.tsx",
+      "target": "src/components/ui/tooltip.jsx",
+      "sha256": "a0784eb77831a799fad7991df4f1b666f876201565a80175e1aa68733574a2e4"
+    },
+    {
+      "original": "hooks/use-mobile.ts",
+      "target": "src/hooks/use-mobile.js",
+      "sha256": "ad0936f84f1df79d3697bfbff9c18f8ad58431c1cbaf2359c6a853b0fcc9f28b"
+    }
+  ],
+  "extractedSections": [
+    {
+      "component": "DashboardPage",
+      "target": "src/pages/dashboard/DashboardPage.jsx",
+      "props": ["data", "transactions", "go", "startSim", "normalInput"],
+      "originalExpressionSha256": "c2d3651865d7a5b66e5d316be27f4fa4f63695b6d0bf8219725ee7b7de51617b"
+    },
+    {
+      "component": "SimulationPage",
+      "target": "src/pages/simulation/SimulationPage.jsx",
+      "props": [
+        "setMode",
+        "simTx",
+        "simUpload",
+        "histories",
+        "saved",
+        "setSaved",
+        "setFormSeed",
+        "go",
+        "notify",
+        "sim",
+        "baseData",
+        "br",
+        "sr"
+      ],
+      "originalExpressionSha256": "27caf672d9ef202cd29c71b845cc0b8323fe305c82eca051371164f16600c408"
+    },
+    {
+      "component": "ChatbotPage",
+      "target": "src/pages/chatbot/ChatbotPage.jsx",
+      "props": ["data", "go", "startSim", "r"],
+      "originalExpressionSha256": "d74df71fe20cfc83df7362f3266c2cce885bf08d017853d4b7f6db0f2b68aaac"
+    },
+    {
+      "component": "BenefitsPage",
+      "target": "src/pages/tax/BenefitsPage.jsx",
+      "props": ["data", "normalInput"],
+      "originalExpressionSha256": "dfe6843784162e9042712e8d355e94c3d6dfad45599bbcc91bb564227d35d420"
+    },
+    {
+      "component": "StatisticsPage",
+      "target": "src/pages/statistics/StatisticsPage.jsx",
+      "props": ["data", "go"],
+      "originalExpressionSha256": "a35e54cf7c6c3c27d9017d07086bf138860086d906f52a5b6b013c0c80cbb4c3"
+    },
+    {
+      "component": "ProfilePage",
+      "target": "src/pages/profile/ProfilePage.jsx",
+      "props": [
+        "data",
+        "setData",
+        "setTransactions",
+        "setSimulation",
+        "setCompareBase",
+        "session",
+        "setSession",
+        "setUpload",
+        "setSimTx",
+        "setSimUpload",
+        "histories",
+        "setHistories",
+        "saved",
+        "setSaved",
+        "setInquiries",
+        "profileTab",
+        "setProfileTab",
+        "go",
+        "notify",
+        "startSim",
+        "normalInput"
+      ],
+      "originalExpressionSha256": "a29676a4f91f40078309f0025ec9d2e619ece3544ecfec05b2b7bbfa4fc0a062"
+    },
+    {
+      "component": "SupportPage",
+      "target": "src/pages/support/SupportPage.jsx",
+      "props": [
+        "inquiries",
+        "setInquiries",
+        "search",
+        "setSearch",
+        "faq",
+        "setFaq",
+        "supportTab",
+        "setSupportTab",
+        "notify"
+      ],
+      "originalExpressionSha256": "a926ebbbec50cce1532c047f71005bd0d77437861bc6108f63a07241ee87c737"
+    },
+    {
+      "component": "AdminPage",
+      "target": "src/pages/admin/AdminPage.jsx",
+      "props": [
+        "admin",
+        "adminTab",
+        "setAdminTab",
+        "publicList",
+        "setPublicList",
+        "refreshSession",
+        "go",
+        "notify"
+      ],
+      "originalExpressionSha256": "aba6307d188e3f37a1ded97f37bf3f59a3fcc9ae5e1b3a03d5cd84a70d95692e"
+    },
+    {
+      "component": "PublicHeader",
+      "target": "src/components/layout/PublicHeader.jsx",
+      "props": ["go"],
+      "originalExpressionSha256": "3255c1ddf4829b48aac9023e1092b9677b3739d78b79fd73ef1af742d9504034"
+    },
+    {
+      "component": "HomePage",
+      "target": "src/pages/home/HomePage.jsx",
+      "props": ["go", "startSim", "normalInput"],
+      "originalExpressionSha256": "20c799c1031246a4c6d0717bac38800227dede144b89b93da9938e5308f101da"
+    },
+    {
+      "component": "AuthPage",
+      "target": "src/pages/auth/AuthPage.jsx",
+      "props": ["page", "setSession", "go", "notify"],
+      "originalExpressionSha256": "f1e261920ad12e2db9bc098720ab61bbbf259a2dbb66750dfeae614c40d396e7"
+    },
+    {
+      "component": "Sidebar",
+      "target": "src/components/layout/Sidebar.jsx",
+      "props": [
+        "page",
+        "data",
+        "mobile",
+        "session",
+        "setSession",
+        "admin",
+        "go",
+        "notify",
+        "normalInput"
+      ],
+      "originalExpressionSha256": "ab60c5b44ff5423345137f4d0a9ad0241e3eb466f41acbe51cbb16cd8be75363"
+    },
+    {
+      "component": "Topbar",
+      "target": "src/components/layout/Topbar.jsx",
+      "props": ["page", "data", "mobile", "setMobile", "notification", "setNotification", "go"],
+      "originalExpressionSha256": "b10460d98af286da424a95d6e0c3f342c9123b607f46ece81a4b80575a09dd52"
+    },
+    {
+      "component": "TaxInputPage",
+      "target": "src/pages/tax/TaxInputPage.jsx",
+      "props": [
+        "data",
+        "transactions",
+        "mode",
+        "session",
+        "upload",
+        "simTx",
+        "simUpload",
+        "formSeed",
+        "go",
+        "calculate",
+        "sim"
+      ],
+      "originalExpressionSha256": "0dacc86f1b2dab2b6b39ace343d9049467d9b0d9ff77de13c44f90051a74ff3d"
+    }
+  ],
+  "originalAppSha256": "64c29d5f21cdbcaea4468ab38cd213b05fc5efb227df62a847d45d1d7bae9dc8",
+  "styleSource": {
+    "original": "app/globals.css",
+    "target": "src/styles/globals.css",
+    "sha256": "21f1cc1fc4cf8013879ae61d645047b17125043c65f5bbe295ba0a9e1560c269"
+  },
+  "generatedExecutionFiles": [
+    "index.html",
+    "src/main.jsx",
+    "vite.config.js",
+    "postcss.config.js",
+    "jsconfig.json",
+    "package.json",
+    "package-lock.json",
+    ".prettierrc.json"
+  ],
+  "routing": {
+    "original": "location.hash / hashchange (React Router 미사용)",
+    "exported": "src/routes/useHashRouting.js",
+    "addressesChanged": false
+  },
+  "feedback_revision": {
+    "version": 11,
+    "date": "2026-10-30",
+    "basis": "동석님 전달 PDF 우선; 기능명세서·ERD v3.8",
+    "frontend": "React JSX + Vite",
+    "notes": "기존 원본의 JSX 추출본에 필요한 입력/응답 경계 수정. v3.9 미확정 DB 열 보류."
+  }
+}

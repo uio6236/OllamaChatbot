@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.local
+.DS_Store
+
+.sites-runtime/
+.sites-checkout/
+.wrangler/
+.next/
+
+tests/.hope-flow-*/
+tests/.feedback-*/
+tests/.render-*/
+tests/.render-parity-*/

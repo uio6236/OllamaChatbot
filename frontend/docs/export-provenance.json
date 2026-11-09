@@ -1,0 +1,16 @@
+{
+  "site_url": "https://hope-refund-young.uio8130.chatgpt.site",
+  "version": 13,
+  "commit_sha": "4aca76f4fbc72110f08cf1209d2338700f7b2baa",
+  "export_date_kst": "2026-10-31",
+  "mode": "source extraction only; no site edits or publication",
+  "format": "React JSX + Vite",
+  "routing": "original hash routing",
+  "excluded": [
+    "node_modules",
+    "dist",
+    "git metadata",
+    "local runtime caches",
+    "private environment values"
+  ]
+}

@@ -1,0 +1,48 @@
+[
+  {
+    "FILE_ID": 1,
+    "FILE_NAME": "gender-age-2024.xlsx",
+    "FILE_PATH": "src/data/statistics/gender-age-2024.xlsx",
+    "FILE_KIND": "ORIGINAL",
+    "ORIGIN_FILE_ID": null,
+    "TAX_YEAR": 2024,
+    "SOURCE_NAME": "국세청 4.2.3 성·연령",
+    "DATA_ORIGIN": "COLLECTED",
+    "BASE_DATE": "2026-10-28",
+    "sha256": "9fd6ccd39d7eeb7277bacc2fdbcb5b6c89eff338f6f337dade982c9469440fd0"
+  },
+  {
+    "FILE_ID": 2,
+    "FILE_NAME": "gender-age-2024.csv",
+    "FILE_PATH": "src/data/statistics/gender-age-2024.csv",
+    "FILE_KIND": "CLEANED",
+    "ORIGIN_FILE_ID": 1,
+    "TAX_YEAR": 2024,
+    "SOURCE_NAME": "국세청 4.2.3 성·연령",
+    "DATA_ORIGIN": "COLLECTED",
+    "BASE_DATE": null
+  },
+  {
+    "FILE_ID": 3,
+    "FILE_NAME": "salary-2024.xlsx",
+    "FILE_PATH": "src/data/statistics/salary-2024.xlsx",
+    "FILE_KIND": "ORIGINAL",
+    "ORIGIN_FILE_ID": null,
+    "TAX_YEAR": 2024,
+    "SOURCE_NAME": "국세청 4.2.4 과세대상근로소득",
+    "DATA_ORIGIN": "COLLECTED",
+    "BASE_DATE": "2026-10-28",
+    "sha256": "b2b37b4fbe77a149b3d3b9b851b72f3c20db93eff418d447c3acb5bceb7e2210"
+  },
+  {
+    "FILE_ID": 4,
+    "FILE_NAME": "salary-2024.csv",
+    "FILE_PATH": "src/data/statistics/salary-2024.csv",
+    "FILE_KIND": "CLEANED",
+    "ORIGIN_FILE_ID": 3,
+    "TAX_YEAR": 2024,
+    "SOURCE_NAME": "국세청 4.2.4 과세대상근로소득",
+    "DATA_ORIGIN": "COLLECTED",
+    "BASE_DATE": null
+  }
+]

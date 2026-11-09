@@ -1,0 +1,110 @@
+# 희망환급 공통 .gitignore
+# React / Spring Boot / Python
+
+# Java / Maven 빌드 산출물
+target/
+bin/
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+
+# Maven Wrapper 실행에 필요한 JAR은 예외적으로 허용
+!**/.mvn/wrapper/maven-wrapper.jar
+
+# Maven 보조 파일
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+# React / Node.js
+node_modules/
+dist/
+build/
+coverage/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python 가상환경 / 캐시
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.coverage
+htmlcov/
+
+# 비밀정보 / 로컬 환경변수
+.env
+.env.*
+!.env.example
+
+# Spring Boot 개인별 설정만 제외
+# 공통 application.yml 및 application.properties는 추적
+application-local.yml
+application-local.yaml
+application-local.properties
+application-secret.yml
+application-secret.yaml
+application-secret.properties
+
+# STS / Eclipse 개인 설정
+.metadata/
+.settings/
+.classpath
+.project
+.factorypath
+.buildpath
+.loadpath
+.recommenders/
+.externalToolBuilders/
+*.launch
+local.properties
+
+# IntelliJ 개인 설정
+.idea/
+out/
+*.iws
+*.iml
+*.ipr
+
+# VS Code 개인 설정
+.vscode/
+.history/
+
+# 로그 / 임시 파일
+*.log
+logs/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+replay_pid*
+
+# 운영체제 파일
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100/
+.Trashes/
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+$RECYCLE.BIN/
+*.stackdump
