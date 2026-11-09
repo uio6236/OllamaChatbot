@@ -4,7 +4,7 @@
 
 연말정산 및 청년 세제 혜택에 관한 질문에 답변하고, RAG(Retrieval-Augmented Generation)를 이용해 관련 참고 자료를 검색하여 AI 답변을 생성하도록 설계합니다.
 
-> **현재 상태:** FastAPI 공통 초기 프로젝트 구성 완료 / Gemma3·RAG·Spring Boot 연동 개발 예정
+> **현재 상태:** FastAPI Health API와 ChatOllama 연결 모듈 구현 / RAG·질문 API·Spring Boot 연동 개발 예정
 
 ## 1. 개발 환경
 
@@ -123,12 +123,12 @@ chatbot/.env.example
 | `CHATBOT_HOST` | FastAPI 실행 주소 | `127.0.0.1` |
 | `CHATBOT_PORT` | FastAPI 실행 포트 | `8001` |
 | `CHATBOT_API_TOKEN` | Spring Boot와 챗봇 서버 간 내부 인증 토큰 | 없음 |
-| `OLLAMA_BASE_URL` | Ollama 서버 주소 | `http://localhost:11434` |
-| `OLLAMA_MODEL` | Ollama에서 사용할 LLM | `gemma3` |
+| `OLLAMA_BASE_URL` | Ollama 서버 주소 | `http://127.0.0.1:11434` |
+| `OLLAMA_MODEL` | Ollama에서 사용할 LLM | `gemma3:4b` |
 
 현재 `.env.example`은 설정 항목 안내용입니다.
 
-환경변수 자동 로딩과 실제 인증 토큰 검증은 아직 구현되지 않았습니다.
+Ollama 연결 모듈은 OS 환경변수를 읽습니다. `.env` 파일 자동 로딩과 실제 인증 토큰 검증은 아직 구현되지 않았습니다.
 
 **주의:** 비밀번호 및 인증 토큰은 GitHub에 업로드하지 않습니다. 실제 값을 설정할 경우 `.gitignore`에서 제외되는 로컬 환경변수 파일 또는 실행 환경 설정을 사용합니다.
 
@@ -272,3 +272,32 @@ Python Chatbot은 전달받은 질문과 필요한 문맥을 기반으로 참고
 기능 구현은 팀의 [희망환급 기능명세서 v1.13](https://docs.google.com/spreadsheets/d/1qW5xjOhPqrWkCn9KLUUbylKfsFJCacfOAgBiXm27v9w/edit)을 기준으로 합니다.
 
 실제 API 주소와 요청·응답 데이터 구조는 팀 공식 API 명세서 및 Spring Boot 담당 영역과 협의하여 확정합니다.
+
+## 10. 첫 구현: 로컬 모델 연결 (2026-11-09)
+
+위 초기 구축 기록 중 Gemma3 연동 예정 항목은 이 절의 상태로 갱신합니다.
+`app/core/config.py`는 OS 환경변수를 검증하고 `app/llm/ollama.py`의
+`OllamaService.generate()`는 `ChatOllama.invoke()`로 텍스트를 생성합니다.
+새 HTTP API는 추가하지 않았으며 `/health`는 모델 상태를 검사하지 않습니다.
+
+Python 3.11.9에서 검증한 `langchain-ollama==1.1.0`을 사용합니다.
+`httpx`, `ollama`는 호출 오류 분류에, `langsmith`는 호출 구간의 외부 추적을
+명시적으로 비활성화하는 데 사용합니다. 질문과 답변을 기록하지 않습니다.
+연결 제한은 3초, HTTP 읽기 대기 제한은 60초입니다. 이는 전체 생성 시간의
+절대 상한은 아니며 스트림 데이터 사이의 대기 제한입니다.
+
+다음은 `chatbot/`에서 실행하는 수동 통합 검증입니다. 모델은 미리 설치되어 있어야 합니다.
+
+```powershell
+$env:OLLAMA_BASE_URL = 'http://127.0.0.1:11434'
+$env:OLLAMA_MODEL = 'gemma3:4b'
+.\.venv\Scripts\python.exe -c "from app.llm.ollama import OllamaService; print(OllamaService().generate('Reply with just OK.'))"
+```
+
+`.env.example`을 복사하는 것만으로 설정이 로딩되지는 않습니다.
+연결 불가, 시간초과, 모델 없음, 서버 오류·잘못된 응답은 별도 내부 예외로 구분합니다.
+질문이 비어 있으면 모델을 호출하지 않습니다. 오류에서 원본 서버 메시지를 노출하지 않습니다.
+
+단위 테스트는 모델 생성자를 Mock으로 대체하므로 실제 Ollama 없이 실행합니다.
+기존 Health 테스트를 포함해 19개 통과했으며, 실제 `gemma3:4b` 호출은 별도로 `OK`를 확인했습니다.
+RAG·세법 정확성·동시성·서버 간 인증은 이번에 구현하거나 검증하지 않았습니다.
