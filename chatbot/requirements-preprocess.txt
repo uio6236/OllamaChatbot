@@ -1,0 +1,4 @@
+-r requirements.txt
+# Python 3.11.9 검증. OCR/ML 레이아웃 패키지를 추가하지 않는다.
+PyMuPDF==1.26.7
+langchain-core==1.7.6

@@ -1,0 +1,3 @@
+# 원본과 전처리 생성물은 공개·배포 검토 없이 Git에 추가하지 않는다.
+/app/data/raw/
+/data/processed/

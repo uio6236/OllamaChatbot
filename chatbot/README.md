@@ -326,3 +326,28 @@ $env:CHATBOT_API_TOKEN = '<로컬에서만 설정할 비밀값>'
 시간·추론 취소는 미검증입니다. 동기 호출은 제한 응답 후에도 계속될 수 있고,
 실제 작업 종료까지 프로세스별 모델 슬롯을 점유합니다. 세법·생성 숫자 검증,
 Oracle 저장·출처 영구 보존·추천 작업 상태 관리는 아직 구현하지 않았습니다.
+
+## 12. PDF 8개 오프라인 전처리
+
+Python 3.11.9에서 `chatbot/`를 작업 디렉터리로 사용합니다.
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-preprocess.txt
+.\.venv\Scripts\python.exe scripts/preprocess_documents.py --input-dir app/data/raw --verify-reproducibility
+# 같은 입력/설정의 완료된 결과를 해시 검증 후 다시 사용
+.\.venv\Scripts\python.exe scripts/preprocess_documents.py --input-dir app/data/raw --reuse
+```
+
+기본 입력 기대 수는 8개입니다. `--input-dir`로 지정한 원본은 읽기만 하며 출력은
+`chatbot/data/processed/<입력·설정 버전 해시>/`에 분리합니다. 기존 출력은 기본 거부하며
+미완료 결과를 자동 덮어쓰거나 삭제하지 않습니다. 새 설정/파이프라인 버전은 다른 경로를 사용합니다.
+
+`manifest.json`, `report.json`, 문서별 pages/chunks/excluded/review 자료를 생성합니다.
+재현성 검증은 원본을 두 번 처리하여 청크·품질 보고서를 비교합니다. 메타데이터·원문·좌표를 보존하며
+빈 페이지·실패·의심 중복·표 대응은 보고합니다. 모든 청크는 수동 검수 대기 상태로 생성되고
+검색 사용 가능으로 자동 승격되지 않습니다. 적용 귀속연도는 미검증 null/false입니다.
+`--max-chars`는 항/호 단위 추가 분할의 후보 상한이며 실제 검색 성능으로 확정된 값이 아닙니다.
+
+PyMuPDF 1.26.7을 사용하며 OCR/임베딩/검색은 추가하지 않았습니다. 기존 FastAPI는
+전처리 모듈을 import하지 않으며 상담·추천의 `RAG_NOT_READY` 동작은 유지됩니다.
+AGENTS.md의 원본 수 변경은 별도 승인 전 수정하지 않습니다.
