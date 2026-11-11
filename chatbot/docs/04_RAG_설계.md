@@ -1,5 +1,82 @@
 # 04. LangChain + Ollama + Elasticsearch RAG 설계
 
+## 현재 구현: 서비스 범위 선정과 격리된 BM25 평가
+
+이번 명시적 승인 범위에서만 미승인 자료를 평가 CLI에 사용한다. AGENTS.md 변경 제안은 사용자가 거절하여 수정하지 않았다. 운영 검색·법령 적용 승인 조건은 그대로이며 FastAPI의 UnavailableRetriever/RAG_NOT_READY를 유지한다. 아래 기능은 운영 검색기를 구현한 것이 아니다.
+
+- `app/rag/scope.py`: 문서명+본문 조문, 근로소득 개정 항목명, 기존 v3 초안의 원본 영역/해시 연결을 사용한다. 단순 키워드로 전체 법령을 포함하지 않는다. 두 코퍼스의 manifest·원본 해시를 기존 load_corpus로 확인한다.
+- 초기 3,186개 중 33개 선정/3,153개 제외. 기존 본문 14개+개정 요약 5개+추가 공식 발췌 코퍼스 14개다. CARD 14, RENT 10, HOUSING_SAVING 12는 중복 소속을 포함하며 합계가 33보다 크다. 공통 법률 시행일 1개는 세 기능, 시행령 시행일 1개는 월세/카드가 공유한다.
+- 확대 후보는 67개로 구분해 저장하지만 색인 CLI가 expanded를 차단한다. 안내서와 사업·종교인·연금소득 구역의 반복 개정 항목은 초기 후보에 포함하지 않는다.
+- sourceUrl=null인 원본 값을 임의로 채우지 않는다. 추가 자료 14개에는 실제 v3 공식 증거 URL·버전·조회일·스냅샷 해시 연결을 별도 officialEvidenceLinks로 보존한다. 로컬 HTML 변환 PDF는 공식 배포 PDF와 구분한다.
+- 원본 청크 전체를 평가 입력으로 보존하므로 청약 조문의 이자 비과세·개정문 인접 내용도 남아 있다. 선정은 해당 청크 전체의 서비스 지원/법적 승인을 뜻하지 않는다. 필요한 영역·예외·부칙의 법적 완전성은 미검증이며 기존 초안 unresolvedIssues를 함께 남긴다.
+- 중복 그룹 8개를 조문 단위로 묶되 출처·버전·다른 하위 청크는 variants로 보존한다. 서로 다른 법문을 하나의 연속 원문으로 합치지 않는다. 운영용 근거 사용 규칙으로 자동 승격하지 않는다.
+
+### 평가 Elasticsearch와 실행
+
+실제로 확인한 로컬 서버는 Elasticsearch 7.10.1(zip)이다. 샌드박스 안에서는 접속 시간이 초과됐으나 승인된 외부 실행에서 연결했다. 서버 설치·설정 변경은 하지 않았다. PATH에서 elasticsearch/docker 명령은 발견하지 못했지만 실행 중인 서버는 별도로 존재했다.
+
+신규 의존성 없이 기존 httpx 0.28.1로 REST API를 호출한다. 7.10+/8/9의 사용 API 범위를 대상으로 구현했으며 실제 검증은 7.10.1, 8/9는 Mock 계약 검사다. BM25 기본값과 standard+2~3글자 ngram 필드를 사용하며 Nori 등 플러그인은 설치하지 않는다. 버전별 공식 REST 문서를 참고했다:
+
+- https://www.elastic.co/guide/en/elasticsearch/reference/7.10/docs-bulk.html
+- https://www.elastic.co/guide/en/elasticsearch/reference/7.10/analysis-ngram-tokenizer.html
+- https://www.elastic.co/docs/reference/elasticsearch/index-settings/similarity
+
+접속 설정은 **평가 전용** `RAG_EVAL_ES_URL`(기본 http://127.0.0.1:9200)이며 loopback 기본 URL만 허용한다. 인증정보 포함 URL·외부 주소·인덱스 경로·리다이렉트·환경 프록시를 거부한다. 현재 인증이 필요한 ES 구성은 지원하지 않으며 무단 보안 설정 변경으로 우회하지 않는다. 운영 접속 설정은 만들지 않는다.
+
+인덱스 이름은 `hope-rag-eval-<selectionHash>`로 고정한다. 지정 이름 외 데이터 경로를 차단하며 운영/다른 환경으로 전환하지 않는다. 생성 시 bulk create, refresh=wait_for, 전체 _source/ID/건수/매핑/선정 해시 대조를 수행한다. 기존 이름은 기본 거부하고 --reuse는 검증 후 읽기 전용 재사용한다. 삭제·덮어쓰기 기능은 없다. 새 선정 버전은 새 인덱스로 분리한다. 초기 시험 인덱스 `hope-rag-eval-0f34218a...`도 33개 평가 자료만 포함하며 최종 인덱스와 별도로 보존했다.
+
+현재 최종 선정 파일:
+`data/processed/scopes/73c351ccb18f18833928ddc78052bf0e3233f3b7a83bee9fdaf411748f44e642/scope.json`
+
+확대 선정 파일(색인하지 않음):
+`data/processed/scopes/5df071cdace2ed4a3789960caf8036631c44deba3b6fd00441a775184ccdb427/scope.json`
+
+chatbot/에서 실행한다. Python 실행 파일은 로컬 가상환경을 사용한다.
+
+```powershell
+python scripts/build_scope_candidates.py --corpus data/processed/8417ec42dc78a0194dbc5edc18dd8aa68ed1f5fd1566f0e5326e57ade0b612f3 app/data/raw --corpus data/processed/evidence/2026-11-11-core3-v3/processed/d76986490b3e0271582f16d2d11bd1169f515cdcf952de7377fe338f4a58fc45 data/processed/evidence/2026-11-11-core3-v3/inputs --ledger data/processed/evidence/2026-11-11-core3-v3/review-ledger-draft.jsonl
+python scripts/index_evaluation_chunks.py --selection data/processed/scopes/73c351ccb18f18833928ddc78052bf0e3233f3b7a83bee9fdaf411748f44e642/scope.json --reuse
+python scripts/evaluate_bm25.py --selection data/processed/scopes/73c351ccb18f18833928ddc78052bf0e3233f3b7a83bee9fdaf411748f44e642/scope.json
+```
+
+새 승인 규칙이나 프레임워크를 추가하지 않고 기존 v3 승인 내보내기와 분리했다. `reject_operational_input`은 원본/평가 자료의 운영 입력을 거부하며 운영 색인 자체도 미구현으로 차단한다. 실제 운영 연결 시 최신 승인 원장 재검사·승인 회수 반영이 별도로 필요하다.
+
+### 실제 평가와 한계
+
+대표 질문은 공제별 10개, 총 30개이며 scripts/evaluate_bm25.py의 QUESTIONS에 있다. 원문에 실제 조문·앵커가 있는 경우에만 TEXT_LOCATOR로 정답 그룹을 만든다. 이는 검색 위치 정답이며 법적 정답이나 전문가 관련성 라벨이 아니다. 전체 원문 숫자·적용 조건을 승인했다는 의미가 없다. 문서의 검증 상태는 UNVERIFIED, 귀속연도 null/false를 유지한다.
+
+최종 실제 결과:
+`data/processed/bm25-evaluations/88f22ae215458416dd38d2e193e14521d57e42e9068e71d8d4f845340bc274ce/evaluation.json`
+
+- 점수 산정 23문항: Recall@5=0.9565217391, MRR@10=0.5598343685. 지표 단위는 중복 제거 조문 그룹이다. 관련 순위와 출처·버전·점수·다른 버전 variants를 질문별 기록했다.
+- 월세 7문항 1.0/0.547619, 카드 8문항 0.875/0.580357, 청약 8문항 1.0/0.55(Recall/MRR).
+- 미확정 4개: RENT-07의 신청·증빙 앵커 위치, RENT-09/CARD-09/HOUSING_SAVING-09의 적용시기 질문. 임의 정답이나 0점으로 채우지 않았다.
+- 범위 밖 3개는 점수에서 제외하며 3개 모두 유사 문서를 노출했다. 현재 검색기는 질문 범위 판별기가 아니며 API에 연결하면 안 된다.
+- CARD-05 자녀 수별 카드 한도는 목표 조문 7위로 Top5 실패다. 개정 요약·용어 중복과 다른 공제의 자녀 조건이 경쟁한다.
+- 30개 모두 상위 결과에 종전/개정 혼합 요약 또는 버전 차이가 있었다. 위험 플래그이며 자동 법적 불일치 판정이 아니다. otherTopicResults도 주제 태그 기반의 교차 주제 신호이지 수동 관련성 판정은 아니다.
+- 향후 조문 직접 질의 우대·주제 범위 판별·요약/본문 분리 평가 및 별도 검토용 질문 세트를 우선한다. 검색 점수 개선만으로 2026 적용을 승인하지 않는다.
+
+운영 승인 자료는 여전히 0건이며 실제 사용자 생성·저장과 연결하지 않았다.
+
+## 2026-11-11 승인 게이트 v3
+
+`review-policy-v3`는 법령 원문 영역과 필수 문맥 묶음을 독립 승인/회수한다.
+`legalConditions` 원문을 보존하고 `unresolvedIssues` 및 기존 미분류 conditions는 차단한다.
+공식 근거의 영역/버전/발췌 해시를 대조하며 원본/기존 v2 원장은 변경하지 않는다.
+운영 출력은 `approved-context-v3`의 regions 배열로 분리되며 API DTO에는 영향을 주지 않는다.
+개정 요약 비교표와 2025 안내서는 v3 운영 승인을 계속 보류한다. 실제 승인 자료 0건이다.
+세부 계약과 한계는 `decisions/2026-11-11_승인게이트보완.md`를 따른다.
+
+## 2026-11-11 검수 및 검색 승인 도구
+
+`quality_checks.py`, `review_models.py`, `review_queue.py`, `approval_gate.py` 및 오프라인 CLI를 추가했다.
+기존 3,133개 청크는 변경하지 않는다. 구조 검증·법령 적용·사용 승인을 독립 원장으로 관리하며
+자동 검사/키워드 후보/표본 선택은 법적 적용이나 운영 사용을 승인하지 않는다.
+실제 결과는 P0 154/P1 103/P2 79/P3 2,797, 표본 180, 개정 검수 묶음 35개다.
+공식 비교문 미제공으로 공식 비교는 NOT_PERFORMED이고 모든 원장은 HOLD다. 실제 승인 내보내기는 0개다.
+정책·실행 경로·조건부 적용·종전/개정 부분 선택 제한은
+`decisions/2026-11-11_청크검수및검색승인.md`에 기록했다. 실제 Elasticsearch 및 API 연결은 하지 않았다.
+
 ## 선택 이유
 - 외부 LLM 사업자 API 대신 `Ollama`로 `gemma3:4b` 로컬 실행. **FastAPI는 Ollama 로컬 HTTP API를 호출**한다. '로컬 LLM 모델'과 '로컬 API 호출'은 동시에 맞는 표현.
 - LangChain은 `ChatOllama`, `ChatPromptTemplate`, `Document`, 텍스트 분할 도구 등 연결 작업에 선택적으로 도입. 모든 로직을 추상화하거나 agent/tool calling을 초기 도입하지 않는다.
