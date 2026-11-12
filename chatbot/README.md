@@ -2,9 +2,9 @@
 
 희망환급 프로젝트의 **Python FastAPI 기반 AI 챗봇 서버**입니다.
 
-연말정산 및 청년 세제 혜택에 관한 질문에 답변하고, RAG(Retrieval-Augmented Generation)를 이용해 관련 참고 자료를 검색하여 AI 답변을 생성하도록 설계합니다.
+Spring Boot가 전달한 연말정산 결과와 Calc 계산 설명 규칙을 사용해 회원별 결과를 설명합니다. 법령 자료 검색(RAG)은 별도 후속 범위입니다.
 
-> **현재 상태:** Health·ChatOllama·내부 API/인증 골격 구현. RAG 미구현으로 실제 상담·추천 POST는 정상 인증 후 `503 RAG_NOT_READY`. Spring Boot 연동은 예정.
+> **현재 상태:** Health·Ollama·내부 API 인증·계산 결과 설명·최초 브리핑/추천·질문 정책을 구현했습니다. Calc 기반 처리와 최초 안내는 RAG 없이 동작합니다. 법령 검색이 필요한 GENERAL 질문은 RAG 미구현으로 처리할 수 없습니다. 로컬 개발용 채팅 화면은 아래 별도 명령으로만 활성화합니다. Spring Boot 실연동은 별도 검증이 필요합니다.
 
 ## 1. 개발 환경
 
@@ -13,8 +13,8 @@
 | Language | Python 3.11.9 |
 | Framework | FastAPI |
 | ASGI Server | Uvicorn |
-| LLM | Ollama + Gemma3 (연동 예정) |
-| RAG | 문서 검색 기반 답변 생성 (구현 예정) |
+| LLM | Ollama + Gemma3 |
+| RAG | 미구현 (계산 결과 설명에서는 사용하지 않음) |
 | Dependency Management | pip, requirements.txt |
 | Testing | pytest |
 | Code Quality | Ruff |
@@ -221,18 +221,18 @@ Spring Boot Backend
       ▼
 Python FastAPI Chatbot
       │
-      ├── 질문 처리
-      ├── RAG 참고 자료 검색
-      └── Ollama / Gemma3 답변 생성
+      ├── TAX_RESULT: 전달된 결과·로컬 Calc 규칙으로 설명
+      ├── Calc 계산 방식 질문: 관련 Calc 규칙을 Gemma3에 전달 (RAG 미사용)
+      └── 최초 안내: 결과·규칙 기반 단일 메시지 / GENERAL: RAG 미구현
 ```
 
 Frontend는 Spring Boot API를 호출합니다.
 
 Spring Boot는 회원 인증, 대화 기록 관리 및 DB 저장을 담당합니다.
 
-Python Chatbot은 전달받은 질문과 필요한 문맥을 기반으로 참고 자료를 검색하고 AI 답변을 생성합니다.
+Python Chatbot은 `TAX_RESULT` 요청에서 Spring Boot가 전달한 개인별 계산 결과와 Calc 설명 규칙을 사용합니다. 별도 개인 결과 없이도 Calc 구현 방식만 설명할 수 있는 질문은 로컬 규칙 파일을 사용합니다. 이 흐름은 세액을 다시 계산하거나 RAG를 호출하지 않습니다. 회원별 결과와 규칙만으로 답할 수 없는 법령·자격 질문은 근거 부족으로 처리합니다.
 
-현재는 목표 아키텍처이며, 실제 서버 간 HTTP 연동은 아직 구현되지 않았습니다.
+회원 인증·Oracle 조회와 저장은 Spring Boot의 책임입니다. 실제 Spring Boot 서버 간 HTTP 연동은 아직 검증하지 않았습니다.
 
 ## 8. 현재 구현 상태
 
@@ -241,6 +241,12 @@ Python Chatbot은 전달받은 질문과 필요한 문맥을 기반으로 참고
 - Python 3.11.9 가상환경
 - FastAPI 기본 애플리케이션
 - `/health` API
+- 내부 상담 API 및 토큰 인증
+- fixture의 `TAX_RESULT` 구조 검증
+- 최초 브리핑·적용 내역·최대 3개 개인별 확인 항목을 `/internal/recommendations`의 단일 `content`로 생성 (RAG 미사용, 자격·원인·절세액 추정 금지)
+- 환급·추가 납부액 및 공제·감면 적용액 설명
+- Calc 계산 규칙 기반 공제 계산 방식 설명 (RAG 없이 처리)
+- 확인되지 않은 숫자·법령이 모델 답변에 포함되면 규칙 기반 설명으로 대체
 - pytest 테스트
 - Ruff 코드 검사 및 포맷 설정
 - 기본 패키지 의존성 파일
@@ -248,16 +254,14 @@ Python Chatbot은 전달받은 질문과 필요한 문맥을 기반으로 참고
 
 ### 추후 구현 및 검증 예정
 
-- Ollama 설치 및 Gemma3 실행
-- 연말정산 RAG 참고 자료 정리
+- Spring Boot와 실제 HTTP 연동 및 운영 DTO 확인
+- 세법 적용연도·법률 정확성 검증
+- RAG 참고 자료 검색
 - PDF 문서 텍스트 추출 및 전처리
 - 문서 청크 분할 및 임베딩
 - 벡터 검색 및 근거 문서 활용
-- AI 질문 처리 API
-- Spring Boot와 내부 HTTP 연동
-- 내부 인증 토큰 검증
-- 대화 문맥 전달 및 답변 반환
-- AI 답변 품질 및 예외 상황 테스트
+- 원본 입력 전체 및 Spring Boot 저장·표시 흐름을 포함한 최초 안내 통합 검증
+- Ollama 실모델 품질·출력 안전성 평가
 
 ## 9. 관련 문서
 
@@ -273,56 +277,53 @@ Python Chatbot은 전달받은 질문과 필요한 문맥을 기반으로 참고
 
 실제 API 주소와 요청·응답 데이터 구조는 팀 공식 API 명세서 및 Spring Boot 담당 영역과 협의하여 확정합니다.
 
-## 10. 첫 구현: 로컬 모델 연결 (2026-11-09)
+### 원본 Calc 입력 기반 추천
 
-위 초기 구축 기록 중 Gemma3 연동 예정 항목은 이 절의 상태로 갱신합니다.
-`app/core/config.py`는 OS 환경변수를 검증하고 `app/llm/ollama.py`의
-`OllamaService.generate()`는 `ChatOllama.invoke()`로 텍스트를 생성합니다.
-새 HTTP API는 추가하지 않았으며 `/health`는 모델 상태를 검사하지 않습니다.
+`taxResult.inputs`는 선택적 원본 입력 스냅샷입니다. 정상 적용 공제는 추천에서 제외하고, 입력했지만 미적용/상세 누락인 항목과 조건부 검토 사항을 최대 3개 안내합니다. 누락/null을 0/N으로 간주하지 않습니다. 필드별 Spring 전달 매핑과 호환성은 `docs/03_API_계약_초안.md`의 최신 절을 참고하세요.
 
-Python 3.11.9에서 검증한 `langchain-ollama==1.1.0`을 사용합니다.
-`httpx`, `ollama`는 호출 오류 분류에, `langsmith`는 호출 구간의 외부 추적을
-명시적으로 비활성화하는 데 사용합니다. 질문과 답변을 기록하지 않습니다.
-연결 제한은 3초, HTTP 읽기 대기 제한은 60초입니다. 이는 전체 생성 시간의
-절대 상한은 아니며 스트림 데이터 사이의 대기 제한입니다.
+## 로컬 개발용 채팅 테스트 화면
 
-다음은 `chatbot/`에서 실행하는 수동 통합 검증입니다. 모델은 미리 설치되어 있어야 합니다.
+운영 API 앱과 분리된 개발 서버입니다. 브라우저에서 더미 회원을 선택하면 기존 `/internal/recommendations`, 질문을 보내면 `/internal/chat-responses`를 서버 측에서 호출합니다. 같은 프로세스의 ASGI 앱을 경유하므로 별도로 8001 서버를 실행할 필요는 없습니다. 실제 Ollama는 네트워크로 호출하며 Mock 응답을 제공하지 않습니다.
 
-```powershell
-$env:OLLAMA_BASE_URL = 'http://127.0.0.1:11434'
-$env:OLLAMA_MODEL = 'gemma3:4b'
-.\.venv\Scripts\python.exe -c "from app.llm.ollama import OllamaService; print(OllamaService().generate('Reply with just OK.'))"
-```
+### 실행 (Windows PowerShell)
 
-`.env.example`을 복사하는 것만으로 설정이 로딩되지는 않습니다.
-연결 불가, 시간초과, 모델 없음, 서버 오류·잘못된 응답은 별도 내부 예외로 구분합니다.
-질문이 비어 있으면 모델을 호출하지 않습니다. 오류에서 원본 서버 메시지를 노출하지 않습니다.
+Ollama를 먼저 실행하고 `ollama list`에서 `gemma3:4b`가 설치되어 있는지 확인하세요. 설치되지 않았다면 로컬 환경에서 모델을 준비해야 합니다. 이 도구는 모델을 자동 다운로드하지 않습니다.
 
-단위 테스트는 모델 생성자를 Mock으로 대체하므로 실제 Ollama 없이 실행합니다.
-기존 Health 테스트를 포함해 19개 통과했으며, 실제 `gemma3:4b` 호출은 별도로 `OK`를 확인했습니다.
-RAG·세법 정확성·동시성·서버 간 인증은 이번에 구현하거나 검증하지 않았습니다.
-
-## 11. 내부 API와 현재 동작 범위
-
-`POST /internal/chat-responses`, `POST /internal/recommendations`는 내부 DTO와
-`X-Chatbot-Token` 인증을 적용합니다. 공통 응답 봉투와 `errorId`는 적용하지 않습니다.
-camelCase·엄격한 금액 타입·질문/이력 상한을 검증합니다. 계약과 보류 사항은
-`docs/03_API_계약_초안.md` 상단을 확인하세요. 위 10절의 인증 미검증 기록은 첫 구현 당시 기록입니다.
+저장소 루트에서:
 
 ```powershell
-# 실제 비밀값은 OS 환경에서 관리하고 저장소에 기록하지 않습니다.
-$env:CHATBOT_API_TOKEN = '<로컬에서만 설정할 비밀값>'
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8001
+cd chatbot
+$env:CHATBOT_ENV = 'development'
+$env:CHATBOT_DEV_UI = '1'
+.\.venv\Scripts\python.exe -m devtools.server
 ```
 
-서버 토큰 미설정·빈 값이면 시작 시 오류 로그를 남기고 내부 POST는 503
-`AUTH_NOT_CONFIGURED`로 차단합니다. 서버는 시작하며 `/health`는 유지됩니다.
-헤더 누락·불일치는 401 `INTERNAL_UNAUTHORIZED`, 유효하지 않은 DTO는 422
-`VALIDATION`입니다. 정상 인증·유효 입력도 현재는 503 `RAG_NOT_READY`입니다.
-실제 요청에서 가상 답변을 반환하는 설정은 없습니다. 검색·모델 정상 생성 테스트는
-의존성 대체로만 수행하며 운영 설정에서 활성화하지 않습니다.
+브라우저 접속: **http://127.0.0.1:8002/**
 
-초기 모델/서비스 대기 제한은 45/50초입니다. 실제 시간값의 적절성·전체 HTTP 처리
-시간·추론 취소는 미검증입니다. 동기 호출은 제한 응답 후에도 계속될 수 있고,
-실제 작업 종료까지 프로세스별 모델 슬롯을 점유합니다. 세법·생성 숫자 검증,
-Oracle 저장·출처 영구 보존·추천 작업 상태 관리는 아직 구현하지 않았습니다.
+서버는 `127.0.0.1:8002`에만 바인딩하고 프록시 전달 IP를 신뢰하지 않습니다. 종료는 실행 터미널에서 `Ctrl+C`입니다. 이미 해당 포트의 개발 서버가 실행 중이면 기존 화면에 접속하거나 기존 서버를 종료한 뒤 재실행하세요.
+
+- 기존 `CHATBOT_API_TOKEN`이 있으면 그대로 사용하고, 없으면 해당 개발 서버 프로세스에만 임시 토큰을 생성합니다. 토큰을 출력하거나 HTML·JavaScript·브라우저 헤더·개발자 정보로 전달하지 않습니다.
+- 이 실행 명령은 `OLLAMA_MODEL=gemma3:4b`를 사용합니다. Ollama 기본 주소는 `http://127.0.0.1:11434`이며 필요한 경우 서버 실행 전 `OLLAMA_BASE_URL`을 설정할 수 있습니다. `.env` 자동 로딩은 없습니다.
+- `CHATBOT_ENV=development`와 `CHATBOT_DEV_UI=1`이 모두 있어야 합니다. 기본/production 환경에서는 화면·더미 경로가 비활성화되며, 운영 `app.main:app`에는 개발 경로를 등록하지 않습니다. 환경을 바꾸면 재시작하세요. 공용 호스팅·역방향 프록시·터널에 공개하는 용도가 아닙니다.
+
+### 사용 방법
+
+1. 추가 납부·환급·월세 미적용·중소기업 감면 중 한 회원을 선택합니다. 최초 브리핑이 한 AI 메시지로 표시됩니다.
+2. 질문을 입력하고 보내기를 누릅니다. Enter로 전송하고 Shift+Enter로 줄바꿈할 수 있습니다.
+3. 성공한 문답과 최초 안내 중 최근 최대 10개 메시지·총 12,000자 이내를 다음 질문에 보냅니다. 단일 메시지가 4,000자를 넘으면 문맥 전송에서 제외합니다. 실패한 문답은 이력에 추가하지 않습니다.
+4. 회원 변경·초기화 시 화면과 이력을 지웁니다. 이전 요청이 늦게 완료돼도 새 회원의 대화에 추가하지 않습니다. 추론 도중 회원을 바꾸면 이전 추론이 계속되어 MODEL_BUSY가 날 수 있으며, 잠시 후 브리핑을 다시 생성하면 됩니다.
+5. 개발자 정보에서 마지막 내부 API 경로·JSON 요청/응답·HTTP 상태·처리 시간을 확인합니다. `model` 필드는 응답 메타데이터입니다. 이 화면에는 직접 호출 계측이 없으므로 **Gemma 직접 호출 여부는 확인 불가**로 표시합니다. model=null이나 모델 이름만으로 실제 호출 여부를 추측하지 않습니다.
+
+응답이 5초 이상 걸리면 대기 상태를 표시합니다. API의 기존 45/50초 대기 제한을 유지하고 개발 경유 서버는 55초, 브라우저는 65초에서 대기를 제한합니다. 브라우저 중단·회원 변경이 실제 추론의 강제 종료를 보장하지는 않습니다. Ollama 미실행·모델 없음·처리 중·시간초과·법령 검색 미준비·서버 연결 실패는 한국어로 안내합니다.
+
+모든 데이터는 `tests/fixtures`의 합성 회원입니다. 브라우저에는 선택 ID만 입력받고 서버가 고정 허용 목록으로 읽습니다. 운영 API가 더미를 자동 반환하지 않습니다. 대화는 브라우저 메모리에만 있어 새로고침하면 사라집니다. 로컬 OS 접근자에 대한 별도 사용자 인증을 구현한 도구는 아닙니다.
+
+### 검증 도구
+
+```powershell
+.\.venv\Scripts\python.exe -m ruff check .
+.\.venv\Scripts\python.exe -m ruff format --check .
+.\.venv\Scripts\python.exe -m pytest -v
+```
+
+선택적 실제 브라우저 검증: 개발 서버와 Ollama를 켠 상태에서 Node 22+ 및 설치된 Edge로 `node tests/validate_dev_ui_browser.cjs`를 실행합니다. 별도 npm 의존성은 없습니다. Edge 경로가 다르면 `BROWSER_EXE`를 설정하세요. 이 스크립트는 pytest에서 자동 실행하지 않으며 임시 폴더에 브라우저 프로필·스크린샷·검증 JSON을 생성합니다. 실행 결과는 `docs/dev_ui_validation.md`에 기록합니다.

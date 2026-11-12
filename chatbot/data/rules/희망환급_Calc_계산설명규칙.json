@@ -1,0 +1,491 @@
+{
+  "metadata": {
+    "title": "희망환급 Calc 구현 기반 챗봇 계산 설명 규칙",
+    "version": "1.0",
+    "generated_on": "2026-11-12",
+    "repository": "KH-Team2/two-trillion",
+    "branch": "feature/calc-5-frontend",
+    "purpose": "챗봇이 실제 Calc의 계산 방식과 DB 저장 결과를 구분해 사용자에게 설명하도록 돕는 참고 자료",
+    "source_of_truth": "Calc 구현 및 연도별 Oracle 기준값; 이 파일은 실행용 세액계산 규칙이 아님",
+    "legal_status": "법률 정확성 및 2026년 적용은 별도 검증 필요",
+    "sources": [
+      "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/tax_calculator.py",
+      "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/card_deduction.py",
+      "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/bracket.py",
+      "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/tax_rules.py",
+      "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/benefit.py",
+      "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/schemas/calculation.py",
+      "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/repositories/oracle_criteria.py",
+      "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/api/calculate.py"
+    ],
+    "critical_boundaries": [
+      "이 문서는 Calc에 구현된 로직을 설명할 뿐, 법령적으로 올바르거나 모든 법정 자격조건을 검사했다고 보장하지 않습니다.",
+      "RATE, LIMIT_AMOUNT, TAX_BRACKET의 실제 값은 Oracle의 귀속연도별 기준값으로 정해집니다.",
+      "챗봇은 새로운 공제액·세액을 스스로 산출하거나 사용자별 중간값을 추정하지 않습니다.",
+      "Calc 응답의 details[].deductionAmount가 개인별 실제 적용액이며, 카드 한도 조정행은 음수일 수 있습니다.",
+      "판정에 필요한 데이터가 없으면 일반적인 계산 순서만 설명하고 개인별 상세 산식이 확정되었다고 말하지 않습니다.",
+      "sourceNote는 원천 근거 메모이지 법령 전체 조문 및 적용시점 검증을 대신하지 않습니다."
+    ]
+  },
+  "api_contract": {
+    "calculate_endpoint": "POST /calculate",
+    "response_fields": [
+      "taxYear",
+      "totalSalary",
+      "withheldTax",
+      "taxableIncome",
+      "calculatedTax",
+      "decidedTax",
+      "expectedRefund",
+      "details[].typeCode",
+      "details[].typeName",
+      "details[].kind",
+      "details[].baseAmount",
+      "details[].deductionAmount",
+      "details[].sourceNote"
+    ],
+    "note": "이 API는 계산만 수행하고 저장하지 않음. Spring Boot가 별도로 저장."
+  },
+  "rules": [
+    {
+      "code": "EARNED_DEDUCTION",
+      "name": "근로소득공제",
+      "kind": "INCOME_DEDUCTION",
+      "description_steps": [
+        "총급여가 속하는 근로소득공제 구간을 조회합니다.",
+        "구간 계산 결과와 공제 상한 중 작은 값을 적용합니다.",
+        "총급여에서 근로소득공제액을 빼 근로소득금액을 계산합니다."
+      ],
+      "input_fields": [
+        "totalSalary"
+      ],
+      "database_criteria": [
+        "TAX_BRACKET(EARNED_DEDUCTION)",
+        "DEDUCTION_TYPE(EARNED_DEDUCTION)"
+      ],
+      "formulas_or_logic": "공제액 = min(구간기본액 + floor((총급여 − 구간시작액) × 구간율/100), DB 공제상한[상한 존재 시]); 근로소득금액 = 총급여 − 공제액",
+      "output": "details[]의 deductionAmount 또는 응답 계산 결과",
+      "special_notes": [
+        "구간과 상한의 실제 금액은 해당 연도 DB 기준값을 확인해야 합니다."
+      ],
+      "source_code": [
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/tax_calculator.py",
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/bracket.py"
+      ]
+    },
+    {
+      "code": "PERSON_BASIC",
+      "name": "기본 인적공제",
+      "kind": "INCOME_DEDUCTION",
+      "description_steps": [
+        "본인 1명에 입력한 부양가족 수를 더합니다.",
+        "인원 수에 기본공제 1인당 기준액을 곱합니다."
+      ],
+      "input_fields": [
+        "dependents"
+      ],
+      "database_criteria": [
+        "DEDUCTION_TYPE(PERSON_BASIC)"
+      ],
+      "formulas_or_logic": "기본공제액 = (1 + dependents) × DB limitAmount",
+      "output": "details[]의 deductionAmount 또는 응답 계산 결과",
+      "special_notes": [
+        "Calc는 전달받은 dependents 값을 사용하며 개별 부양가족의 자격 검증 과정은 이 계산 함수에 나타나지 않습니다."
+      ],
+      "source_code": [
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/tax_calculator.py"
+      ]
+    },
+    {
+      "code": "NATIONAL_PENSION",
+      "name": "국민연금보험료 소득공제",
+      "kind": "INCOME_DEDUCTION",
+      "description_steps": [
+        "입력된 국민연금보험료에 DB의 공제율을 적용합니다."
+      ],
+      "input_fields": [
+        "nationalPension"
+      ],
+      "database_criteria": [
+        "DEDUCTION_TYPE(NATIONAL_PENSION)"
+      ],
+      "formulas_or_logic": "공제액 = floor(nationalPension × DB rate/100)",
+      "output": "details[]의 deductionAmount 또는 응답 계산 결과",
+      "special_notes": [],
+      "source_code": [
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/tax_calculator.py"
+      ]
+    },
+    {
+      "code": "HEALTH_INSURANCE",
+      "name": "건강·고용보험료 소득공제",
+      "kind": "INCOME_DEDUCTION",
+      "description_steps": [
+        "보험료 공제액 후보를 계산합니다.",
+        "표준세액공제를 사용하는 대안과 항목별 공제 대안을 각각 계산합니다.",
+        "최종 선택이 표준세액공제 방식이면 보험료 소득공제액을 0원으로 기록합니다."
+      ],
+      "input_fields": [
+        "healthInsurance"
+      ],
+      "database_criteria": [
+        "DEDUCTION_TYPE(HEALTH_INSURANCE)",
+        "DEDUCTION_TYPE(STANDARD_CREDIT)"
+      ],
+      "formulas_or_logic": "보험료 후보 = floor(healthInsurance × DB rate/100); 최종액 = 0 if useStandard else 후보",
+      "output": "details[]의 deductionAmount 또는 응답 계산 결과",
+      "special_notes": [
+        "선택은 개별 항목만의 유불리가 아니라 최종 결정세액을 비교해 이루어집니다."
+      ],
+      "source_code": [
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/tax_calculator.py"
+      ]
+    },
+    {
+      "code": "HOUSING_SAVING",
+      "name": "주택청약 관련 소득공제",
+      "kind": "INCOME_DEDUCTION",
+      "description_steps": [
+        "총급여 구간에 맞는 공제 기준 행이 있는지 확인합니다.",
+        "무주택 세대주 여부가 Y인 경우에만 입력 납입액과 DB 대상 납입 한도 중 작은 금액을 사용합니다.",
+        "해당 금액에 DB 공제율을 적용합니다."
+      ],
+      "input_fields": [
+        "totalSalary",
+        "housingSaving",
+        "homelessHeadYn"
+      ],
+      "database_criteria": [
+        "DEDUCTION_TYPE(HOUSING_SAVING)"
+      ],
+      "formulas_or_logic": "행이 존재하고 homelessHeadYn=Y일 때 공제액 = floor(min(housingSaving, DB limitAmount) × DB rate/100); 그렇지 않으면 0",
+      "output": "details[]의 deductionAmount 또는 응답 계산 결과",
+      "special_notes": [
+        "주택청약의 추가 법적 자격 요건을 이 함수만으로 모두 판정한다고 설명하지 마세요."
+      ],
+      "source_code": [
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/tax_calculator.py"
+      ]
+    },
+    {
+      "code": "CARD",
+      "name": "신용카드 등 소득공제",
+      "kind": "CARD",
+      "description_steps": [
+        "카드 지출을 분류·결제수단에 맞는 DB 공제율 행으로 배정하고 해당하지 않는 지출은 제외합니다.",
+        "취소액 반영 후 항목별 음수 합계를 0으로 보정합니다.",
+        "총급여에 CARD_THRESHOLD의 공제율을 적용해 최저 사용금액을 구합니다.",
+        "공제율이 낮은 항목부터 최저 사용금액을 차감합니다.",
+        "각 항목의 남은 사용액에 공제율을 곱해 항목별 잠정 공제액을 구합니다.",
+        "자녀 수와 급여 구간에 따라 기본 한도 행을 선택합니다.",
+        "기본 한도와 특별소비 공제액·추가 한도로 최종 공제액을 제한합니다.",
+        "한도 초과분이 있으면 상세 내역에 음수의 CARD_RULE 행을 추가합니다."
+      ],
+      "input_fields": [
+        "taxYear",
+        "totalSalary",
+        "children",
+        "cardSpends[].categoryId",
+        "cardSpends[].payMethod",
+        "cardSpends[].amount"
+      ],
+      "database_criteria": [
+        "DEDUCTION_TYPE(kind=CARD)",
+        "DEDUCTION_TYPE(CARD_THRESHOLD)",
+        "DEDUCTION_TYPE(CARD_LIMIT_BASE)",
+        "DEDUCTION_TYPE(CARD_LIMIT_CHILD1)",
+        "DEDUCTION_TYPE(CARD_LIMIT_CHILD2)",
+        "DEDUCTION_TYPE(CARD_LIMIT_EXTRA)",
+        "SPEND_CATEGORY 분류 ID(일반=1)"
+      ],
+      "formulas_or_logic": "최저 기준 = floor(totalSalary × CARD_THRESHOLD.rate/100); 항목 잠정 공제액 = floor(max(사용액−해당 항목에 배분한 문턱액, 0) × 항목 rate/100); 잠정 총합 gross = Σ항목 공제액; special = Σ비일반(categoryId != 1) 항목 공제액; 최종 = min(gross, baseLimit) + min(max(gross−baseLimit,0), special, extraLimit)",
+      "output": "CARD 종류의 details[] 및 카드 한도 조정 음수행; 최종액은 전체 세액계산에서 소득공제에 반영",
+      "special_notes": [
+        "카드 기본 한도는 자녀 2명 이상 CHILD2 행이 존재할 때 우선, 자녀 1명 CHILD1 행 존재 시 다음, 없으면 BASE입니다.",
+        "문화체육 분류가 급여구간에서 사용 불가능하면 일반 결제수단 행으로 재분류하는 처리입니다.",
+        "각 카드 상세행의 deductionAmount를 그대로 더하면 한도 조정 음수행이 포함돼야 최종액이 됩니다.",
+        "현재 API는 gross, thresholdLeft, baseLimit, special 등 모든 중간값을 별도로 반환하지 않습니다."
+      ],
+      "source_code": [
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/card_deduction.py",
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/tax_calculator.py",
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/tax_rules.py"
+      ]
+    },
+    {
+      "code": "TAXABLE_INCOME",
+      "name": "과세표준",
+      "kind": "CALCULATION_STAGE",
+      "description_steps": [
+        "총급여에서 근로소득공제를 빼 근로소득금액을 구합니다.",
+        "기본공제·국민연금·주택청약·카드 소득공제를 합산합니다.",
+        "표준세액공제 적용 여부에 따라 건강·고용보험료 공제액을 포함하거나 제외합니다.",
+        "근로소득금액에서 소득공제액을 차감하되 0원 미만으로 내려가지 않게 합니다."
+      ],
+      "input_fields": [
+        "totalSalary",
+        "dependents",
+        "nationalPension",
+        "healthInsurance",
+        "housingSaving",
+        "homelessHeadYn",
+        "children",
+        "cardSpends"
+      ],
+      "database_criteria": "관련 DEDUCTION_TYPE 및 TAX_BRACKET",
+      "formulas_or_logic": "과세표준 = max(0, 총급여−근로소득공제−[인적공제+국민연금공제+청약공제+카드공제+(항목별 방식일 때 보험료공제)])",
+      "output": "taxableIncome",
+      "special_notes": [],
+      "source_code": [
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/tax_calculator.py"
+      ]
+    },
+    {
+      "code": "TAX_RATE",
+      "name": "산출세액",
+      "kind": "CALCULATION_STAGE",
+      "description_steps": [
+        "과세표준에 해당하는 TAX_RATE 구간을 찾습니다.",
+        "구간의 기본금액에 초과금액 × 구간 세율을 더합니다."
+      ],
+      "input_fields": [
+        "taxableIncome"
+      ],
+      "database_criteria": [
+        "TAX_BRACKET(TAX_RATE)"
+      ],
+      "formulas_or_logic": "산출세액 = 구간기본액 + floor((과세표준−구간시작) × 구간율/100)",
+      "output": "calculatedTax",
+      "special_notes": [],
+      "source_code": [
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/tax_calculator.py",
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/bracket.py"
+      ]
+    },
+    {
+      "code": "SME_YOUTH",
+      "name": "중소기업 취업자 소득세 감면",
+      "kind": "TAX_REDUCTION",
+      "description_steps": [
+        "Spring Boot가 별도 혜택 진단 결과를 바탕으로 감면 신청값을 정리해 Calc에 전달합니다.",
+        "감면 기준 행이 있고 신청값이 Y이면 산출세액 × DB 감면율과 DB 한도 중 작은 금액을 계산합니다.",
+        "산출세액에서 아직 남아 있는 세액 이하로 실제 감면액을 제한합니다."
+      ],
+      "input_fields": [
+        "smeReductionYn",
+        "calculatedTax"
+      ],
+      "database_criteria": [
+        "DEDUCTION_TYPE(SME_YOUTH)",
+        "BENEFIT_CONDITION(SME_YOUTH) — Spring 진단에 사용"
+      ],
+      "formulas_or_logic": "후보감면액 = min(floor(calculatedTax × DB rate/100), DB limitAmount); 실제감면액 = min(후보감면액, 남은 산출세액)",
+      "output": "details[]의 deductionAmount 또는 응답 계산 결과",
+      "special_notes": [
+        "감면 신청 Y만으로 자격이 확정되지는 않습니다. Spring CalculationService는 진단이 eligible=true인 경우만 Y로 유지합니다.",
+        "실제 감면 적용 여부는 기준 행 및 최종 계산 결과로 판단해야 합니다."
+      ],
+      "source_code": [
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/tax_calculator.py",
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/benefit.py"
+      ]
+    },
+    {
+      "code": "EARNED_CREDIT",
+      "name": "근로소득세액공제",
+      "kind": "TAX_CREDIT",
+      "description_steps": [
+        "산출세액에 대한 근로소득세액공제 구간 결과를 계산합니다.",
+        "총급여별 근로소득세액공제 한도를 별도 함수로 구하고 작은 값을 적용합니다.",
+        "중소기업 감면이 있으면 감면액·산출세액 비율에 맞춰 공제액을 조정합니다.",
+        "남아 있는 세액 한도에서 실제 적용액을 결정합니다."
+      ],
+      "input_fields": [
+        "totalSalary",
+        "calculatedTax",
+        "SME_YOUTH 적용액"
+      ],
+      "database_criteria": [
+        "TAX_BRACKET(EARNED_CREDIT)",
+        "DEDUCTION_TYPE(EARNED_CREDIT)"
+      ],
+      "formulas_or_logic": "감면 전 공제액 = min(calc_bracket(calculatedTax, EARNED_CREDIT 구간), earned_credit_limit(totalSalary)); 감면 후 = 감면 전 공제액 × (산출세액−감면액)//산출세액(감면액 > 0, 산출세액 > 0일 때); 최종액 = min(감면 후, 남은 세액)",
+      "output": "details[]의 deductionAmount 또는 응답 계산 결과",
+      "special_notes": [
+        "총급여별 한도 구간식은 DB가 아니라 tax_rules.py에 구현되어 있습니다.",
+        "2025·2026에 동일 규칙을 적용한다고 코드가 가정하며, 법령 적용연도는 별도 검증이 필요합니다.",
+        "원 미만은 바닥 버림입니다."
+      ],
+      "source_code": [
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/tax_calculator.py",
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/tax_rules.py",
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/bracket.py"
+      ]
+    },
+    {
+      "code": "PENSION",
+      "name": "연금저축·IRP 세액공제",
+      "kind": "TAX_CREDIT",
+      "description_steps": [
+        "연금저축 납입액에 단독 한도를 먼저 적용합니다.",
+        "해당 연금저축액과 IRP 납입액 합계에 연금계좌 전체 한도를 적용합니다.",
+        "DB 공제율을 적용한 세액공제 후보를 구합니다.",
+        "남아 있는 산출세액을 넘지 않도록 적용합니다."
+      ],
+      "input_fields": [
+        "pensionSaving",
+        "irpSaving"
+      ],
+      "database_criteria": [
+        "DEDUCTION_TYPE(PENSION)",
+        "DEDUCTION_TYPE(PENSION_SAVING_LIMIT)"
+      ],
+      "formulas_or_logic": "연금저축인정액 = min(pensionSaving, savingLimit)[해당 행 존재 시]; 연금계좌대상액 = min(연금저축인정액 + irpSaving, accountLimit); 후보세액공제 = floor(대상액 × DB rate/100); 실제 적용액 = min(후보액, 남은 세액)",
+      "output": "details[]의 deductionAmount 또는 응답 계산 결과",
+      "special_notes": [
+        "현재 details[PENSION].baseAmount에는 한도 적용 전 납입합계가 표시됩니다."
+      ],
+      "source_code": [
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/tax_calculator.py"
+      ]
+    },
+    {
+      "code": "RENT",
+      "name": "월세 세액공제",
+      "kind": "TAX_CREDIT",
+      "description_steps": [
+        "총급여 구간에 맞는 월세 기준 행과 무주택 세대주 조건을 확인합니다.",
+        "연간 월세액(월 월세 × 12)과 DB 공제 대상 한도 중 작은 금액에 DB 공제율을 적용합니다.",
+        "건강·고용보험료 소득공제+월세 세액공제를 사용하는 방안과 표준세액공제 방안을 비교해 결정세액이 작은 쪽을 택합니다."
+      ],
+      "input_fields": [
+        "totalSalary",
+        "monthlyRent",
+        "homelessHeadYn"
+      ],
+      "database_criteria": [
+        "DEDUCTION_TYPE(RENT)",
+        "DEDUCTION_TYPE(STANDARD_CREDIT)"
+      ],
+      "formulas_or_logic": "후보월세세액공제 = floor(min(monthlyRent × 12, DB limitAmount) × DB rate/100); 실제 적용액 = min(후보액, 남은 세액); 표준 방식 채택 시 0",
+      "output": "details[]의 deductionAmount 또는 응답 계산 결과",
+      "special_notes": [
+        "실제 원문 상 법적 월세 대상 조건 전체를 코드가 확인하는 것은 아닙니다.",
+        "월세액을 12개월로 환산하므로 실제 납부 개월 수가 다른 경우 입력 계약을 확인해야 합니다."
+      ],
+      "source_code": [
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/tax_calculator.py"
+      ]
+    },
+    {
+      "code": "STANDARD_CREDIT",
+      "name": "표준세액공제",
+      "kind": "TAX_CREDIT",
+      "description_steps": [
+        "건강·고용보험료 소득공제를 포함하지 않는 대안에 표준세액공제 후보를 적용합니다.",
+        "월세 세액공제는 이 대안에서는 적용하지 않습니다.",
+        "두 계산 경로의 결정세액을 비교하여 더 낮은 결과를 선택합니다."
+      ],
+      "input_fields": [
+        "healthInsurance",
+        "monthlyRent"
+      ],
+      "database_criteria": [
+        "DEDUCTION_TYPE(STANDARD_CREDIT)"
+      ],
+      "formulas_or_logic": "표준세액공제 후보 = DB limitAmount; 실제 적용액 = min(후보액, 남은 세액); standard.decidedTax < itemized.decidedTax일 때 표준 방식 채택",
+      "output": "details[]의 deductionAmount 또는 응답 계산 결과",
+      "special_notes": [
+        "두 방식 결과가 동일할 때는 코드가 항목별 방식(itemized)을 선택합니다.",
+        "표준 방식을 선택하면 건강·고용보험료 소득공제와 월세 세액공제는 0원으로 처리합니다."
+      ],
+      "source_code": [
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/tax_calculator.py"
+      ]
+    },
+    {
+      "code": "DECIDED_TAX",
+      "name": "결정세액",
+      "kind": "CALCULATION_STAGE",
+      "description_steps": [
+        "산출세액에서 중소기업 감면을 먼저 차감합니다.",
+        "근로소득세액공제, 연금계좌 세액공제, 월세 또는 표준세액공제를 순서대로 적용합니다.",
+        "각 차감액은 해당 시점의 남은 세액을 넘지 않습니다.",
+        "표준 방식과 항목별 방식 중 최종 결정세액이 더 낮은 경로를 선택합니다."
+      ],
+      "input_fields": [
+        "calculatedTax",
+        "공제·감면별 후보 금액"
+      ],
+      "database_criteria": [
+        "DEDUCTION_TYPE, TAX_BRACKET"
+      ],
+      "formulas_or_logic": "남은세액 ← 산출세액; 각 감면/세액공제별 실제 적용액 = max(0,min(후보액,남은세액)); 남은세액 차감 반복; 결정세액 = 더 작은 두 경로의 남은세액",
+      "output": "decidedTax",
+      "special_notes": [],
+      "source_code": [
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/tax_calculator.py"
+      ]
+    },
+    {
+      "code": "EXPECTED_REFUND",
+      "name": "예상 환급액 또는 추가 납부액",
+      "kind": "CALCULATION_STAGE",
+      "description_steps": [
+        "기납부세액에서 결정세액을 뺍니다.",
+        "양수이면 예상 환급액, 음수이면 절댓값만큼 예상 추가 납부액, 0이면 차액 없음으로 안내합니다."
+      ],
+      "input_fields": [
+        "withheldTax",
+        "decidedTax"
+      ],
+      "database_criteria": [],
+      "formulas_or_logic": "expectedRefund = withheldTax − decidedTax",
+      "output": "expectedRefund",
+      "special_notes": [
+        "계산 결과는 예상치이며 실제 신고·정산 결과와 다를 수 있습니다."
+      ],
+      "source_code": [
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/tax_calculator.py"
+      ]
+    },
+    {
+      "code": "BENEFIT_DIAGNOSIS",
+      "name": "청년 혜택 자격 진단",
+      "kind": "BENEFIT_DIAGNOSIS",
+      "description_steps": [
+        "귀속연도별 BENEFIT_CONDITION을 읽습니다.",
+        "회사 규모·입사 당시 나이(군 복무 반영)·기간·총급여·무주택 세대주 조건을 확인합니다.",
+        "미입력 정보가 있으면 판정 불가(None)를 반환합니다.",
+        "불충족 조건이 있으면 비해당(False)를 반환합니다."
+      ],
+      "input_fields": [
+        "taxYear",
+        "totalSalary",
+        "birthDate",
+        "militaryMonths",
+        "hireDate",
+        "companySize",
+        "homelessHeadYn"
+      ],
+      "database_criteria": [
+        "BENEFIT_CONDITION"
+      ],
+      "formulas_or_logic": "입사 당시 나이 = floor((생일과 입사일의 완성 개월 수 − min(군복무개월, DB 상한))/12); 혜택별 조건 판정",
+      "output": "POST /benefit의 results[].eligible, reasons, sourceNote",
+      "special_notes": [
+        "자격 진단은 세액 계산이 아닙니다.",
+        "법령 요건의 완전성을 별도로 확인해야 합니다."
+      ],
+      "source_code": [
+        "https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/benefit.py"
+      ]
+    }
+  ],
+  "chatbot_usage": {
+    "result_explanation": "Spring Boot가 DB에서 조회한 사용자별 실제 금액을 최우선 사용. 개인별 수치 설명 시 값의 출처를 식별.",
+    "method_explanation": "질문한 typeCode의 description_steps 및 formulas_or_logic로 Calc의 일반 계산 방식을 설명.",
+    "legal_explanation": "법령의 자격·예외·시행일은 별도 검증된 RAG 근거가 있을 때만 확정 설명.",
+    "recommendation": "절세 추천 금액을 LLM이 임의 산출하지 않음. DB 입력과 최종 내역 차이에서 확인 후보만 제시."
+  }
+}

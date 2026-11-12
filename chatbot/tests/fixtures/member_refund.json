@@ -1,0 +1,57 @@
+{
+  "questionType": "TAX_RESULT",
+  "message": "왜 환급액이 발생했나요?",
+  "taxYear": 2026,
+  "taxResult": {
+    "predictionId": 1002,
+    "withheldTax": 1800000,
+    "decidedTax": 1350000,
+    "expectedRefund": 450000,
+    "details": [
+      {
+        "typeCode": "EARNED_DEDUCTION",
+        "typeName": "근로소득공제",
+        "kind": "INCOME_DEDUCTION",
+        "baseAmount": 40000000,
+        "deductionAmount": 11500000,
+        "sourceNote": null
+      },
+      {
+        "typeCode": "PERSON_BASIC",
+        "typeName": "기본공제",
+        "kind": "INCOME_DEDUCTION",
+        "baseAmount": 3000000,
+        "deductionAmount": 3000000,
+        "sourceNote": null
+      },
+      {
+        "typeCode": "NATIONAL_PENSION",
+        "typeName": "국민연금보험료 소득공제",
+        "kind": "INCOME_DEDUCTION",
+        "baseAmount": 1450000,
+        "deductionAmount": 1450000,
+        "sourceNote": null
+      },
+      {
+        "typeCode": "PENSION",
+        "typeName": "연금계좌 세액공제",
+        "kind": "TAX_CREDIT",
+        "baseAmount": 2000000,
+        "deductionAmount": 300000,
+        "sourceNote": null
+      }
+    ],
+    "inputs": {
+      "totalSalary": 40000000,
+      "nationalPension": 1450000,
+      "healthInsurance": 0,
+      "monthlyRent": 0,
+      "housingSaving": 0,
+      "pensionSaving": 2000000,
+      "irpSaving": 0,
+      "smeReductionYn": "N",
+      "homelessHeadYn": "N"
+    }
+  },
+  "history": []
+}

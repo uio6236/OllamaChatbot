@@ -17,8 +17,10 @@ router = APIRouter(
 
 @router.post("/internal/chat-responses", response_model=ChatResponse)
 async def create_chat_response(
-    request: ChatRequest, generation: GenerationService = Depends(get_generation)
+    request: ChatRequest,
+    generation: GenerationService = Depends(get_generation),
 ):
     return await within_request_limit(
-        ChatService(generation).respond(request), generation.settings.request_timeout
+        ChatService(generation).respond(request),
+        generation.settings.request_timeout,
     )

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>희망환급 · 로컬 채팅 테스트</title>
+<style>
+[hidden]{display:none!important}
+:root{font-family:system-ui,-apple-system,"맑은 고딕",sans-serif;color:#172d3b;background:#f2f5f4;color-scheme:light}*{box-sizing:border-box}body{margin:0}header{padding:22px 32px;background:#183f3b;color:white;display:flex;align-items:center;justify-content:space-between}h1{font-size:21px;margin:0}header small{color:#c4e2d7}.layout{display:grid;grid-template-columns:260px minmax(0,1fr);max-width:1260px;margin:24px auto;gap:20px;padding:0 20px}aside,main{background:white;border:1px solid #dbe5e0;border-radius:14px}aside{padding:22px;height:fit-content}h2{font-size:15px;margin:0 0 14px}label{display:block;font-size:14px;margin-bottom:8px}select,textarea,button{font:inherit}select{width:100%;padding:12px;border:1px solid #baccc2;border-radius:8px;background:white}button{border:0;border-radius:8px;padding:11px 14px;background:#176e59;color:white;cursor:pointer}button:disabled{opacity:.5;cursor:wait}.secondary{background:#eaf2ed;color:#245243;width:100%;text-align:left;margin-top:10px;font-size:13px}p,li{font-size:13px;line-height:1.7;color:#53665e}.badge{display:inline-block;border:1px solid #759a8c;padding:5px 9px;border-radius:20px;font-size:12px}main{overflow:hidden}.topbar{padding:16px 22px;border-bottom:1px solid #e4ece7;display:flex;justify-content:space-between;align-items:center}.topbar span{font-size:13px;color:#49665b}#messages{height:48vh;min-height:260px;overflow:auto;padding:22px;display:flex;flex-direction:column;gap:15px}.bubble{max-width:90%;border-radius:12px;padding:14px 17px;white-space:pre-wrap;line-height:1.75;font-size:14px;background:#edf4f0;align-self:flex-start;overflow-wrap:anywhere}.bubble.user{background:#174e42;color:white;align-self:flex-end}.bubble.error{background:#fff1ed;color:#9a3325}.who{display:block;font-size:11px;opacity:.7;margin-bottom:6px}#status{min-height:32px;padding:0 22px;color:#4c6c60;font-size:13px}form{padding:16px 22px;border-top:1px solid #e4ece7;display:flex;gap:10px;align-items:end}textarea{resize:vertical;min-height:66px;max-height:180px;flex:1;width:100%;border:1px solid #bdcec5;border-radius:9px;padding:12px;line-height:1.5}details{margin:0 22px 20px;border:1px solid #dce6e0;border-radius:8px;padding:12px}summary{cursor:pointer;font-size:13px;font-weight:600}pre{font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:340px;overflow:auto;background:#f4f6f5;padding:12px;border-radius:6px}#callInfo{font-size:12px;color:#53665e}footer{font-size:12px;color:#66796f;padding:0 22px 16px}@media(max-width:740px){header{padding:18px}.layout{grid-template-columns:1fr;margin:14px auto;padding:0 12px}aside{padding:16px}.secondary{display:inline-block;width:auto;margin-right:5px}#messages{height:45vh}header small{display:none}}
+</style>
+</head>
+<body>
+<header><div><h1>희망환급 <small>채팅 실험실</small></h1></div><span class="badge">로컬 개발 전용 · gemma3:4b</span></header>
+<div class="layout"><aside>
+<h2>테스트 회원</h2><label for="member">계산 결과 선택</label><select id="member"><option value="">회원을 선택해 주세요</option></select>
+<p>회원을 선택하면 최초 브리핑을 생성합니다. 회원을 바꾸면 대화와 최근 이력이 초기화됩니다.</p>
+<button id="restart" class="secondary" disabled>대화 초기화 · 브리핑 다시 생성</button>
+<h2 style="margin-top:24px">이렇게 질문해 보세요</h2>
+<button class="secondary example" data-question="환급액과 공제 내역을 알려주세요.">내 계산 결과</button>
+<button class="secondary example" data-question="IRP 공제 원리를 알려주세요.">IRP 계산 원리</button>
+<button class="secondary example" data-question="월세를 70만원으로 바꾸면 환급액이 얼마인가요?">조건 변경 질문</button>
+<p>가상 회원 데이터만 사용합니다. 대화는 메모리에만 유지하며 새로고침하면 사라집니다. 실제 개인정보는 입력하지 마세요.</p>
+</aside><main>
+<div class="topbar"><strong id="memberLabel">새 대화</strong><span id="historyInfo">최근 이력 0개</span></div>
+<div id="messages" role="log" aria-live="polite"><div class="bubble">왼쪽에서 더미 회원을 선택해 대화를 시작하세요.</div></div>
+<div id="status" role="status" aria-live="polite"></div>
+<form id="chatForm"><label for="question" class="sr-only" hidden>질문</label><textarea id="question" maxlength="1000" placeholder="연말정산 결과나 공제에 대해 질문해 주세요." disabled></textarea><button id="send" type="submit" disabled>보내기</button></form>
+<footer>Enter로 전송 · Shift+Enter로 줄바꿈 · 추가 확인이 필요한 답변은 질문을 구체화해 주세요.</footer>
+<details><summary>개발자 정보 · 마지막 API 요청/응답</summary><p id="callInfo">직접 Gemma 호출 여부는 확인 불가입니다. 응답의 model 값만 표시합니다.</p><pre id="debug">아직 요청하지 않았습니다.</pre></details>
+</main></div>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+let history=[], busy=false, ready=false, generation=0, active=null;
+const errorMessages={OLLAMA_UNAVAILABLE:"Ollama에 연결할 수 없습니다. Ollama 실행 상태와 gemma3:4b 설치를 확인해 주세요.",OLLAMA_MODEL_NOT_FOUND:"gemma3:4b 모델을 찾지 못했습니다. Ollama의 모델 목록을 확인해 주세요.",OLLAMA_TIMEOUT:"모델 응답 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.",REQUEST_TIMEOUT:"API 처리 시간이 초과되었습니다. 아직 추론 중일 수 있으니 잠시 기다려 주세요.",MODEL_BUSY:"모델이 이전 요청을 처리 중입니다. 잠시 후 다시 시도해 주세요.",AUTH_NOT_CONFIGURED:"개발 서버의 내부 인증 설정을 확인해 주세요.",INTERNAL_UNAUTHORIZED:"내부 API 인증에 실패했습니다. 개발 서버 설정을 확인해 주세요.",RAG_NOT_READY:"법령 검색 기능은 아직 준비되지 않았습니다. 계산 결과나 Calc 원리 질문을 이용해 주세요."};
+function controls(){ $("question").disabled=busy||!ready; $("send").disabled=busy||!ready; $("restart").disabled=busy||!$("member").value; }
+function bubble(text,role="assistant",error=false){const node=document.createElement("div");node.className="bubble "+(role==="user"?"user":"")+(error?" error":"");const tag=document.createElement("span");tag.className="who";tag.textContent=error?"안내":role==="user"?"나":"희망환급";node.append(tag,document.createTextNode(text));$("messages").append(node);$("messages").scrollTop=$("messages").scrollHeight;}
+function recent(){const selected=[];let size=0;for(let i=history.length-1;i>=0&&selected.length<10;i--){if(history[i].content.length>4000)continue;if(size+history[i].content.length>12000)break;selected.unshift(history[i]);size+=history[i].content.length;}return selected;}
+function historyLabel(){$("historyInfo").textContent="최근 이력 "+recent().length+"개 / 최대 10개";}
+async function call(path,body,version){
+ let received=false;$("debug").textContent=JSON.stringify({request:{path,body},state:"응답 대기 중"},null,2);$("callInfo").textContent="직접 Gemma 호출: 확인 불가 · API 응답 대기 중";
+ const controller=new AbortController();active=controller;const slow=setTimeout(()=>{if(version===generation)$("status").textContent="응답을 기다리고 있습니다. 모델 처리에는 시간이 걸릴 수 있습니다.";},5000);const limit=setTimeout(()=>controller.abort(),65000);
+ try{const response=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),signal:controller.signal});const data=await response.json();received=true;if(version!==generation)return null;
+ $("debug").textContent=JSON.stringify(data,null,2);const output=data.response||data;const reported=output.model||(output.recommendations&&output.recommendations[0]?.model)||null;$("callInfo").textContent="직접 Gemma 호출: 확인 불가 · 응답 model: "+(reported||"null")+" · HTTP "+(data.httpStatus||response.status)+" · 처리 "+(data.elapsedMs??"—")+"ms";
+ if(!response.ok||data.ok===false){const err=output;throw new Error((errorMessages[err.code]||err.message||"서버에서 응답을 처리하지 못했습니다.")+" ["+(err.code||"SERVER_ERROR")+"]");}return data.response;
+ }catch(error){if(version!==generation)return null;let message=error.message;if(error.name==="AbortError")message="응답 대기 시간이 길어 요청을 중단했습니다. 서버 추론은 계속될 수 있으니 잠시 후 다시 시도해 주세요.";else if(error instanceof TypeError)message="개발 서버에 연결할 수 없습니다. 로컬 서버 실행 상태를 확인해 주세요.";else if(error instanceof SyntaxError)message="서버 응답 형식을 확인할 수 없습니다. 개발 서버 상태를 확인해 주세요.";if(!received){$("debug").textContent=JSON.stringify({request:{path,body},error:message},null,2);$("callInfo").textContent="직접 Gemma 호출: 확인 불가 · API 응답 미수신";}throw new Error(message);
+ }finally{clearTimeout(slow);clearTimeout(limit);if(active===controller)active=null;}
+}
+async function start(){generation++;const version=generation;if(active)active.abort();history=[];ready=false;busy=false;$("messages").replaceChildren();$("debug").textContent="아직 요청하지 않았습니다.";$("callInfo").textContent="직접 Gemma 호출 여부는 확인 불가입니다.";historyLabel();controls();const member=$("member").value;$("memberLabel").textContent=$("member").selectedOptions[0].textContent;if(!member){bubble("더미 회원을 선택해 주세요.");$("status").textContent="";return;}busy=true;controls();$("status").textContent="최초 브리핑을 생성하고 있습니다…";
+ try{const data=await call("/dev/briefing",{member},version);if(!data)return;const items=data.recommendations||[];if(!items.length)throw new Error("최초 안내 내용이 없습니다. 다시 생성해 주세요.");const content=items.map(x=>x.content).join("\n\n");bubble(content);$("messages").scrollTop=0;history.push({role:"assistant",content});ready=true;$("status").textContent="질문을 입력해 주세요.";}
+ catch(error){if(version===generation){bubble(error.message,"assistant",true);$("status").textContent="브리핑 다시 생성으로 재시도할 수 있습니다.";}}
+ finally{if(version===generation){busy=false;historyLabel();controls();}}
+}
+$("member").addEventListener("change",start);$("restart").addEventListener("click",start);
+$("chatForm").addEventListener("submit",async event=>{event.preventDefault();const message=$("question").value.trim();if(!message||busy||!ready)return;const version=generation;busy=true;controls();bubble(message,"user");$("question").value="";$("status").textContent="답변을 요청하고 있습니다…";
+ try{const data=await call("/dev/chat",{member:$("member").value,message,history:recent()},version);if(!data)return;bubble(data.answer);history.push({role:"user",content:message},{role:"assistant",content:data.answer});$("status").textContent=data.status==="INSUFFICIENT_EVIDENCE"?"추가 정보나 구체적인 항목명이 필요합니다.":"답변을 받았습니다.";}
+ catch(error){if(version===generation){bubble(error.message,"assistant",true);$("question").value=message;$("status").textContent="질문을 확인하고 다시 전송할 수 있습니다.";}}
+ finally{if(version===generation){busy=false;historyLabel();controls();$("question").focus();}}
+});
+$("question").addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey&&!event.isComposing){event.preventDefault();$("chatForm").requestSubmit();}});
+document.querySelectorAll(".example").forEach(button=>button.addEventListener("click",()=>{if(ready&&!busy){$("question").value=button.dataset.question;$("question").focus();}}));
+fetch("/dev/members").then(r=>{if(!r.ok)throw new Error("개발 서버 접근 설정을 확인해 주세요.");return r.json();}).then(members=>{members.forEach(member=>{const option=document.createElement("option");option.value=member.id;option.textContent=member.label;$("member").append(option);});}).catch(error=>{$("status").textContent=error.message;});
+</script></body></html>

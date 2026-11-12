@@ -26,12 +26,53 @@ class DeductionDetail(ContractModel):
     source_note: Annotated[str, Field(max_length=200)] | None = None
 
 
+class CalcInputs(ContractModel):
+    """추천에 필요한 Calc 입력 일부. 누락·null은 미확인이고 0/N과 다르다."""
+
+    total_salary: Annotated[Money, Field(ge=0)] | None = None
+    national_pension: Annotated[Money, Field(ge=0)] | None = None
+    health_insurance: Annotated[Money, Field(ge=0)] | None = None
+    monthly_rent: Annotated[Money, Field(ge=0)] | None = None
+    housing_saving: Annotated[Money, Field(ge=0)] | None = None
+    pension_saving: Annotated[Money, Field(ge=0)] | None = None
+    irp_saving: Annotated[Money, Field(ge=0)] | None = None
+    sme_reduction_yn: Literal["Y", "N"] | None = None
+    homeless_head_yn: Literal["Y", "N"] | None = None
+
+
 class TaxResult(ContractModel):
     prediction_id: Annotated[int, Field(gt=0)]
     withheld_tax: Annotated[Money, Field(ge=0)]
     decided_tax: Annotated[Money, Field(ge=0)]
     expected_refund: Money
     details: Annotated[list[DeductionDetail], Field(max_length=100)]
+    inputs: CalcInputs | None = None
+
+    @model_validator(mode="after")
+    def validate_input_snapshot(self):
+        """세액 재계산 없이 원본 입력과 Calc 상세의 동일 기준값만 비교한다."""
+        if self.inputs is None:
+            return self
+        values = self.inputs
+        expected = {
+            "EARNED_DEDUCTION": values.total_salary,
+            "NATIONAL_PENSION": values.national_pension,
+            "HEALTH_INSURANCE": values.health_insurance,
+            "HOUSING_SAVING": values.housing_saving,
+            "RENT": values.monthly_rent * 12
+            if values.monthly_rent is not None
+            else None,
+            "PENSION": (
+                values.pension_saving + values.irp_saving
+                if values.pension_saving is not None and values.irp_saving is not None
+                else None
+            ),
+        }
+        for item in self.details:
+            value = expected.get(item.type_code)
+            if value is not None and value != item.base_amount:
+                raise ValueError("원본 입력과 계산 상세의 기준액이 일치하지 않습니다.")
+        return self
 
 
 class HistoryMessage(ContractModel):

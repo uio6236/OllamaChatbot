@@ -1,0 +1,57 @@
+{
+  "questionType": "TAX_RESULT",
+  "message": "중소기업 취업자 감면은 얼마가 적용됐나요?",
+  "taxYear": 2026,
+  "taxResult": {
+    "predictionId": 1004,
+    "withheldTax": 1200000,
+    "decidedTax": 400000,
+    "expectedRefund": 800000,
+    "details": [
+      {
+        "typeCode": "EARNED_DEDUCTION",
+        "typeName": "근로소득공제",
+        "kind": "INCOME_DEDUCTION",
+        "baseAmount": 32000000,
+        "deductionAmount": 9500000,
+        "sourceNote": null
+      },
+      {
+        "typeCode": "PERSON_BASIC",
+        "typeName": "기본공제",
+        "kind": "INCOME_DEDUCTION",
+        "baseAmount": 1500000,
+        "deductionAmount": 1500000,
+        "sourceNote": null
+      },
+      {
+        "typeCode": "SME_YOUTH",
+        "typeName": "중소기업 취업자 소득세 감면",
+        "kind": "TAX_REDUCTION",
+        "baseAmount": 1500000,
+        "deductionAmount": 1000000,
+        "sourceNote": null
+      },
+      {
+        "typeCode": "EARNED_CREDIT",
+        "typeName": "근로소득세액공제",
+        "kind": "TAX_CREDIT",
+        "baseAmount": 1500000,
+        "deductionAmount": 100000,
+        "sourceNote": null
+      }
+    ],
+    "inputs": {
+      "totalSalary": 32000000,
+      "nationalPension": 0,
+      "healthInsurance": 0,
+      "monthlyRent": 0,
+      "housingSaving": 0,
+      "pensionSaving": 0,
+      "irpSaving": 0,
+      "smeReductionYn": "Y",
+      "homelessHeadYn": "N"
+    }
+  },
+  "history": []
+}

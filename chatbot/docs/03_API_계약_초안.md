@@ -1,5 +1,64 @@
 # 03. API 계약 — 2026-11-09 팀 합의 반영
 
+## 질문 정책 추가 (2026-11-12 최신)
+
+상담 API 앞단에서 조건 변경·시뮬레이션, 원리+조건 변경 혼합, 무관한 질문, 범위 밖 세목, 의도 불명확, 서비스 사용 문의를 구분한다. API 필드나 enum 추가는 없다. 고정 정책 안내와 원리+시뮬레이션 안내는 ANSWERED/model=null/sources=[]이며, 추가 확인은 INSUFFICIENT_EVIDENCE/model=null/sources=[]이다. 단순 원리·현재 결과 조회는 기존 경로를 유지한다. 최초 recommendations API는 변경하지 않았다.
+
+현재 질문이 짧거나 문맥에 의존할 때 최근 사용자 발화 최대 2개에서 주제·의도만 연결한다. 직전의 단일 항목 현재 적용액/입력액 조회를 잇는 그럼 얼마인가요는 현재 요청의 스냅샷으로 답한다. 조건 변경을 잇는 짧은 질문은 시뮬레이션을 안내하며, 단순 항목명·불명확한 문맥은 추가 확인한다. Assistant 이력·이력 금액으로 입력을 보완하지 않는다. 따라서 기존 문서의 모든 모호한 발화를 무조건 확인한다는 설명은 이 제한된 연결 정책으로 보완된다. 상세 정책은 AGENTS.md, 실제 응답은 question_policy_validation.md를 따른다.
+
+
+## 2026-11-12 원본 Calc 입력 기반 추천 확장 (최신)
+
+이 절은 아래의 결과 기준액 기반 추천 설명보다 우선한다.
+
+### DTO 변경과 호환성
+
+`TaxResult`에 선택적인 `inputs` 객체를 추가했다. `/internal/chat-responses`와 `/internal/recommendations`가 공유한다. 기존 요청은 inputs 없이 그대로 허용하며, 응답 필드와 단일 content 메시지 계약은 바뀌지 않는다. inputs 또는 개별 값의 누락/null은 미확인이다. 0이나 N으로 채우지 않는다. 금액은 기존 Calc 계약과 같이 0 이상 NUMBER(12) 범위의 엄격한 정수이며 문자열·실수·불리언은 거부한다. Y/N은 해당 문자열만 허용한다.
+
+| inputs 필드 | Spring Boot 전달 원천 | 사용 목적 |
+|---|---|---|
+| totalSalary | PREDICTION_INPUT.TOTAL_SALARY | EARNED_DEDUCTION.baseAmount와 같은 스냅샷인지 확인 |
+| nationalPension | PREDICTION_INPUT.NATIONAL_PENSION | 납입 입력이 있으나 미적용/상세 누락인 경우만 확인 |
+| healthInsurance | PREDICTION_INPUT.HEALTH_INSURANCE | 보험료 입력과 실제 적용액 구분 |
+| monthlyRent | PREDICTION_INPUT.MONTHLY_RENT | 월 단위 입력. RENT.baseAmount는 Calc에서 연간 환산한 값 |
+| housingSaving | PREDICTION_INPUT.HOUSING_SAVING | 청약 납입 입력이 있으나 미적용/상세 누락인 경우 확인 |
+| pensionSaving | PREDICTION_INPUT.PENSION_SAVING | 연금저축 납입액. IRP와 구분 |
+| irpSaving | PREDICTION_INPUT.IRP_SAVING | IRP 납입액. 두 값이 모두 알려졌을 때만 합계 입력 분석 |
+| smeReductionYn | PREDICTION_INPUT.SME_REDUCTION_YN | 실제 Calc에 전달한 신청값 Y인데 미적용/상세 누락이면 진단 결과 확인 |
+| homelessHeadYn | PREDICTION_INPUT.HOMELESS_HEAD_YN | 월세·청약의 조건 입력을 사실로 표시. 법적 자격으로 확정하지 않음 |
+
+전달 예시(월세 미적용 테스트 회원):
+
+```json
+{"taxYear":2026,"taxResult":{"predictionId":1003,"withheldTax":900000,"decidedTax":820000,"expectedRefund":80000,"details":[{"typeCode":"RENT","typeName":"월세액 세액공제","kind":"TAX_CREDIT","baseAmount":6000000,"deductionAmount":0,"sourceNote":null}],"inputs":{"totalSalary":30000000,"nationalPension":0,"healthInsurance":0,"monthlyRent":500000,"housingSaving":0,"pensionSaving":0,"irpSaving":0,"smeReductionYn":"N","homelessHeadYn":"N"}}}
+```
+
+위 예시는 일부 상세행만 담았다. 원본 입력 전체나 완전한 Calc 응답을 새 DTO라고 확정한 것이 아니다. totalSalary/nationalPension/healthInsurance/housingSaving의 동일 기준값, monthlyRent의 연간 단위, pensionSaving+irpSaving의 상세 기준액이 충돌하면 422 VALIDATION으로 거부한다. 이는 스냅샷·단위 검사이고 공제액·세액을 새로 계산하는 기능은 아니다. partial detail은 누락행을 허용하며 이를 0원으로 간주하지 않는다.
+
+### 추천 및 Spring Boot 연동 책임
+
+- 정상적으로 양의 적용액이 있는 항목은 추가 확인 후보에서 제외한다. 입력금액과 공제액이 다르다는 이유만으로 누락이나 한도 여유를 판정하지 않는다.
+- 입력이 양수이거나 신청 Y인데 적용액 0/상세 누락인 항목을 먼저 확인한다. 원인·자격을 확정하지 않으며 Y/N도 입력된 사실로만 표시한다. 카드 조정행은 후보에서 제외한다.
+- 연금저축과 IRP가 모두 명시적으로 0원이고 결정세액이 남은 경우에만 향후 납입 계획에 관한 조건부 검토를 안내한다. 가입·추가 납입·절세액을 확정적으로 권유하지 않는다. 모든 후보 합계는 최대 3개다.
+- 후보가 없으면 추가 검토 사유를 확인하지 못했다고 안내하고 정상 적용 공제의 재확인을 요청하지 않는다. inputs가 없으면 원본 입력 전달이 필요함을 안내한다.
+- Spring Boot는 해당 predictionId의 소유권 확인 후, 현재 회원 입력이 아니라 계산 당시 저장한 PREDICTION_INPUT 및 같은 예측의 PREDICTION_DETAIL을 함께 전달해야 한다. SME 값은 진단 처리 후 실제 Calc에 보낸 값을 사용한다. DB 누락을 0/N으로 임의 보완하지 않는다.
+- totalSalary는 일관성 검증용이며, 귀속연도별 급여 경계·자격·공제율·한도는 이 서비스에서 새로 판정하지 않는다. dependents/children/cardSpends 및 calculatedTax/taxableIncome은 현재 후보 판정에 필요하지 않아 추가하지 않았다. 카드 개인화 추천과 실제 혜택 진단 결과 추가는 후속 계약 대상이다.
+
+### 비교 자료와 확인 한계
+
+팀 `feature/calc-5-frontend`의 [CalcRequest/CalcResponse](https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/schemas/calculation.py), [계산 구현](https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/calc/app/services/tax_calculator.py), [Oracle 스키마](https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/database/01_schema.sql), [저장 매핑](https://github.com/KH-Team2/two-trillion/blob/feature/calc-5-frontend/backend/src/main/resources/mapper/prediction/PredictionMapper.xml)을 읽어 비교했다. 소스 트리 조회 SHA는 e6cdb1aa8456b0debfe2cc36bf566431fa6d7c0e이다. DB의 일부 납입액은 NUMBER(10)이지만 Calc API는 NUMBER(12) 범위를 받는다. 이 확장은 Calc API 범위를 유지하며 DB 저장 유효성 검증을 대체하지 않는다.
+
+추가 제공된 `data/reference/희망연봉2조 ERD v4.1.sql` 원본을 직접 대조했다. 파일 크기 15,162바이트 및 SHA-256 `17435eb8cdab84b8369fe389f656025dd2fcc2fb7b766a0c4b14360c972a3d1b`가 원본 목록과 일치한다. PREDICTION_INPUT의 위 9개 컬럼·타입과 예측번호 PK/FK, PREDICTION의 결정세액·부호 있는 환급액, PREDICTION_DETAIL의 기준액·적용액, RECOMMENDATION/CHAT_MESSAGE의 CONTENT CLOB을 확인했다. 입력 매핑 변경은 필요하지 않다. 원본에도 월세·청약·연금저축·IRP는 NUMBER(10), 총급여·국민연금·건강보험료는 NUMBER(12)다. Calc API가 더 넓은 NUMBER(12)를 받는 차이는 유지하며 DB 저장 검증과 구분한다. 더미 4종 입력은 모두 원본 자릿수 범위와 스냅샷 검사를 통과했다. MEMBER.HOMELESS_HEAD_YN이나 최신 INCOME 대신 계산 당시 PREDICTION_INPUT을 전달한다. 이 SQL은 논리 ERD로 읽었으며 실행하지 않았다. Oracle 실행 DDL과 모든 제약이 동일하다고 단정하지 않으며, Spring Boot 실연동 및 Oracle 실조회는 여전히 미검증이다.
+
+
+## 2026-11-12 최초 브리핑·개인별 확인 안내 구현
+
+- `POST /internal/recommendations`의 요청·응답 필드는 유지한다. `recommendations`에는 `typeCode:null`인 한 건만 반환하며 `content` 하나에 결과 요약·적용 내역·최대 3개 확인 항목을 통합한다. Spring Boot가 이를 하나의 AI 채팅 메시지로 저장·표시한다. 저장·회원 권한 확인은 FastAPI에서 수행하지 않는다.
+- 최초 안내는 전달된 계산 결과와 로컬 Calc 규칙만 사용하며 RAG를 호출하지 않는다. GENERAL 상담의 기존 RAG 동작과 TAX_RESULT 계산 설명은 유지한다. 아래의 추천 API `RAG_NOT_READY` 및 검색 근거 부족 시 빈 배열 정책은 이 경로에 더 이상 적용하지 않는다.
+- 현재 DTO에는 원본 입력 전체가 없다. `details[].baseAmount`는 항목별 계산 기준액이고 `deductionAmount`는 실제 적용액이다. 두 값과 Calc 규칙으로 확인 후보를 정하며, 자격·미적용 원인·절세액은 판정하지 않는다. 결과에 없는 항목을 미신청으로 간주하지 않는다. 카드 음수 조정행은 추천 후보에서 제외한다.
+- 원본 입력·증빙 확인이 필요한 상태도 검증된 안내 메시지를 생성했다면 `ANSWERED`이다. 후보가 없을 때에도 결과 요약과 필요한 정보 안내 한 건을 반환한다. 모델 호출 실패는 기존 503 오류를 유지한다. `sources:[]`는 PDF 법령 출처가 없다는 뜻이며 Calc JSON을 법적 근거로 표시하지 않는다.
+- Gemma는 서버가 확정한 후보의 검증된 자연어 설명을 선택한다. 금액·자격·원인을 새로 생성하거나 후보를 추가하는 출력은 버리고 서버의 검증된 문장으로 대체한다. 따라서 자유로운 재서술은 제한된다. 운영 Spring Boot와의 실제 저장·표시 연동은 별도 검증이 필요하다.
+
 ## 최신 확정 정책 및 이번 구현 (2026-11-09 사용자 승인)
 
 이 절이 아래의 초기 설계안보다 우선한다. 사용자용 정책과 내부 API 구현 상태를 구분한다.
@@ -163,3 +222,7 @@ JSON은 camelCase만 허용하고 알 수 없는 필드·문자열/불리언/실
 ## 공식 자료와 참고 코드의 우선순위
 - 팀 결정: **2026-11-09 수정 PDF 2~5쪽** > 이전 11-03 PDF의 원시 JSON 응답 규칙.
 - 구현 참고: `https://github.com/sjlimiei26/final_project_sample/tree/main`의 `ApiResponse.java`, `PageMeta.java`, `GlobalExceptionHandler.java`, `MlClient.java`, `front/src/api/client.js`는 **패턴 참고**. 희망환급의 실제 경로(`/api/**`), 오류 코드, 컴포넌트/패키지·공통 설정을 그대로 덮어쓰지 않는다.
+
+## 1차 통합 검증 보완 (2026-11-12)
+
+명시적 원본 입력 조회는 taxResult.inputs에서만 반환하며 공제 적용액과 구분한다. 예를 들어 연금저축 입력 2,000,000원과 공제액 300,000원, 월세 입력 500,000원과 연간 기준액 6,000,000원·적용액 0원은 각각 다르다. 입력 미전달 시 대화 이력이나 baseAmount로 채우지 않는다. DTO는 추가 변경하지 않았다. 명시적 항목명 없이 그건 얼마인지 묻는 질문은 항목명을 요청한다. 실모델 통합 검증 전체 결과는 phase1_validation.md를 따른다.

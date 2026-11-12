@@ -88,6 +88,9 @@ class GenerationService:
                 ensure_ascii=False,
             )
         )
+        return await self.generate_prompt(prompt)
+
+    async def generate_prompt(self, prompt: str) -> str:
         try:
             async with asyncio.timeout(self.settings.model_timeout):
                 answer = await asyncio.to_thread(self._invoke, prompt)

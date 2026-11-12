@@ -1,0 +1,57 @@
+{
+  "questionType": "TAX_RESULT",
+  "message": "월세를 입력했는데 왜 공제가 0원인가요?",
+  "taxYear": 2026,
+  "taxResult": {
+    "predictionId": 1003,
+    "withheldTax": 900000,
+    "decidedTax": 820000,
+    "expectedRefund": 80000,
+    "details": [
+      {
+        "typeCode": "EARNED_DEDUCTION",
+        "typeName": "근로소득공제",
+        "kind": "INCOME_DEDUCTION",
+        "baseAmount": 30000000,
+        "deductionAmount": 9000000,
+        "sourceNote": null
+      },
+      {
+        "typeCode": "PERSON_BASIC",
+        "typeName": "기본공제",
+        "kind": "INCOME_DEDUCTION",
+        "baseAmount": 1500000,
+        "deductionAmount": 1500000,
+        "sourceNote": null
+      },
+      {
+        "typeCode": "RENT",
+        "typeName": "월세액 세액공제",
+        "kind": "TAX_CREDIT",
+        "baseAmount": 6000000,
+        "deductionAmount": 0,
+        "sourceNote": null
+      },
+      {
+        "typeCode": "STANDARD_CREDIT",
+        "typeName": "표준세액공제",
+        "kind": "TAX_CREDIT",
+        "baseAmount": 0,
+        "deductionAmount": 130000,
+        "sourceNote": null
+      }
+    ],
+    "inputs": {
+      "totalSalary": 30000000,
+      "nationalPension": 0,
+      "healthInsurance": 0,
+      "monthlyRent": 500000,
+      "housingSaving": 0,
+      "pensionSaving": 0,
+      "irpSaving": 0,
+      "smeReductionYn": "N",
+      "homelessHeadYn": "N"
+    }
+  },
+  "history": []
+}

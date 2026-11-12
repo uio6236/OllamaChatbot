@@ -1,0 +1,57 @@
+{
+  "questionType": "TAX_RESULT",
+  "message": "왜 117,000원을 추가 납부해야 하나요?",
+  "taxYear": 2026,
+  "taxResult": {
+    "predictionId": 1001,
+    "withheldTax": 1523000,
+    "decidedTax": 1640000,
+    "expectedRefund": -117000,
+    "details": [
+      {
+        "typeCode": "EARNED_DEDUCTION",
+        "typeName": "근로소득공제",
+        "kind": "INCOME_DEDUCTION",
+        "baseAmount": 36000000,
+        "deductionAmount": 10000000,
+        "sourceNote": null
+      },
+      {
+        "typeCode": "PERSON_BASIC",
+        "typeName": "기본공제",
+        "kind": "INCOME_DEDUCTION",
+        "baseAmount": 1500000,
+        "deductionAmount": 1500000,
+        "sourceNote": null
+      },
+      {
+        "typeCode": "NATIONAL_PENSION",
+        "typeName": "국민연금보험료 소득공제",
+        "kind": "INCOME_DEDUCTION",
+        "baseAmount": 1200000,
+        "deductionAmount": 1200000,
+        "sourceNote": null
+      },
+      {
+        "typeCode": "EARNED_CREDIT",
+        "typeName": "근로소득세액공제",
+        "kind": "TAX_CREDIT",
+        "baseAmount": 2100000,
+        "deductionAmount": 460000,
+        "sourceNote": null
+      }
+    ],
+    "inputs": {
+      "totalSalary": 36000000,
+      "nationalPension": 1200000,
+      "healthInsurance": 0,
+      "monthlyRent": 0,
+      "housingSaving": 0,
+      "pensionSaving": 0,
+      "irpSaving": 0,
+      "smeReductionYn": "N",
+      "homelessHeadYn": "N"
+    }
+  },
+  "history": []
+}
