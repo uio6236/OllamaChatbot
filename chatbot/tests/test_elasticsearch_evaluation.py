@@ -76,13 +76,13 @@ class MockElastic:
         raise AssertionError(path)
 
 
-def setup_store(version="7.10.1"):
+def setup_store(version="7.10.1", profile="baseline"):
     data = selection_fixture()
     server = MockElastic(version)
     store = EvaluationStore(
-        data["selectionHash"], transport=httpx.MockTransport(server)
+        data["selectionHash"], transport=httpx.MockTransport(server), profile=profile
     )
-    return store, server, evaluation_documents(data)
+    return store, server, evaluation_documents(data, profile=profile)
 
 
 @pytest.mark.parametrize("version", ["7.10.1", "8.19.0", "9.0.0"])
@@ -231,21 +231,137 @@ def test_gold_requires_real_text_anchor_and_metrics_exclude_unknown():
     assert score_question(unknown, [hit])["recallAt5"] is None
 
 
+def test_quality_profile_preserves_original_and_versions():
+    from app.rag.elasticsearch_documents import source_metadata
+
+    data = selection_fixture()
+    old = copy.deepcopy(data)
+    baseline = evaluation_documents(data)
+    documents = evaluation_documents(data, profile="quality-v2")
+    assert data == old
+    assert documents[0]["id"] == baseline[0]["id"]
+    assert documents[0]["contentHash"] == baseline[0]["contentHash"]
+    assert documents[0]["sourceKind"] == "LAW_BODY"
+    assert documents[0]["applicableTaxYear"] is None
+    row = copy.deepcopy(data["candidates"][0])
+    row["documentType"] = "AMENDMENT_SUMMARY"
+    assert source_metadata(row)["comparisonOnly"]
+    row["documentType"] = "LAW"
+    row["contextRegions"] = [{"role": "APPLICATION"}]
+    assert source_metadata(row)["sourceKind"] == "SUPPLEMENT"
+
+
+def test_outside_and_ambiguous_queries_do_not_call_es():
+    store, server, _ = setup_store(profile="quality-v2")
+    try:
+        assert (
+            store.search_evaluation("법인카드 매입세액 공제는?")["status"]
+            == "OUT_OF_SCOPE"
+        )
+        assert store.search_evaluation("카드")["status"] == "INSUFFICIENT_EVIDENCE"
+        assert server.paths == []
+    finally:
+        store.close()
+
+
+def test_quality_body_context_and_query_have_no_answer_ids():
+    store, server, docs = setup_store(profile="quality-v2")
+    try:
+        store.index_documents(docs)
+        assert (
+            store.search_evaluation("월세 세액공제 요건")["status"]
+            == "RETRIEVED_UNVERIFIED"
+        )
+        assert not store.search_evaluation("월세 소득공제 한도")["answerUseAllowed"]
+        with pytest.raises(EvaluationSearchError, match="SOURCE_VIEW"):
+            store.search_evaluation("월세 공제 요건", view="comparison")
+        server.documents.clear()
+        assert (
+            store.search_evaluation("월세 공제 요건")["status"]
+            == "INSUFFICIENT_EVIDENCE"
+        )
+    finally:
+        store.close()
+
+
+def test_quality_query_is_generic_and_supplement_penalty_is_conditional():
+    store, server, docs = setup_store(profile="quality-v2")
+    payloads = []
+
+    def capture(request):
+        if request.url.path.endswith("/_search"):
+            payloads.append(json.loads(request.content))
+        return server(request)
+
+    store.close()
+    store = EvaluationStore(
+        docs[0]["selectionHash"],
+        profile="quality-v2",
+        transport=httpx.MockTransport(capture),
+    )
+    try:
+        store.index_documents(docs)
+        store.search_evaluation("월세 공제한도 규정은?")
+        payload = payloads[-1]
+        assert "function_score" in payload["query"]
+        text = json.dumps(payload, ensure_ascii=False)
+        assert "CARD-05" not in text and "제126조의2" not in text
+        assert "chunkId" not in text
+        store.search_evaluation("월세 부칙 적용시기는?")
+        assert "function_score" not in payloads[-1]["query"]
+    finally:
+        store.close()
+
+
+def test_quality_comparison_refuses_changed_gold():
+    from scripts.evaluate_bm25 import compare_quality
+
+    questions = make_questions(evaluation_documents(selection_fixture()))
+    with pytest.raises(ValueError, match="정답"):
+        compare_quality(questions, None, {"questionsHash": "0" * 64})
+
+
+def test_quality_different_versions_stay_unverified_and_separate():
+    store, server, docs = setup_store(profile="quality-v2")
+    try:
+        store.index_documents(docs)
+        server.documents[docs[0]["id"]]["legalVersions"] = ["가상 법률 버전 1"]
+        server.documents["other"] = {
+            **copy.deepcopy(server.documents[docs[0]["id"]]),
+            "id": "other",
+            "legalVersions": ["가상 법률 버전 2"],
+        }
+        result = store.search_evaluation("월세 세액공제 요건")
+        assert not result["answerUseAllowed"]
+        assert result["hits"][0]["versionResolution"] == "NOT_VERIFIED"
+        assert len(result["hits"][0]["variants"]) == 1
+        assert result["hits"][0]["applicableTaxYear"] is None
+    finally:
+        store.close()
+
+
 @pytest.mark.skipif(
     os.environ.get("RUN_RAG_EVAL_INTEGRATION") != "1",
     reason="로컬 ES 명시적 통합 실행 전용",
 )
-def test_live_evaluation_index_readonly():
+@pytest.mark.parametrize("profile", ["baseline", "quality-v2"])
+def test_live_evaluation_index_readonly(profile):
     from pathlib import Path
 
     path = os.environ.get("RAG_EVAL_SELECTION")
     if not path:
         pytest.fail("RAG_EVAL_SELECTION이 필요합니다.")
     data = json.loads(Path(path).read_text(encoding="utf-8"))
-    docs = evaluation_documents(data)
-    store = EvaluationStore(data["selectionHash"])
+    docs = evaluation_documents(data, profile=profile)
+    store = EvaluationStore(data["selectionHash"], profile=profile)
     try:
         assert store.verify(docs)["count"] == len(docs)
         assert store.search("월세 세액공제")
+        if profile == "quality-v2":
+            assert (
+                store.search_evaluation("법인카드 매입세액 공제")["status"]
+                == "OUT_OF_SCOPE"
+            )
+            assert store.search_evaluation("월세 세액공제")["hits"]
     finally:
         store.close()

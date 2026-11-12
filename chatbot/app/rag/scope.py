@@ -1,6 +1,7 @@
 """명시적 조문·기존 검수 영역에 따른 평가 후보 선정. 승인 상태는 변경하지 않는다."""
 
 import json
+import re
 from collections import Counter
 from pathlib import Path
 
@@ -66,6 +67,76 @@ TARGETS = {
     "card-2026-child-limit": "CARD",
     "housing-2026-payment": "HOUSING_SAVING",
 }
+
+
+def normalize_question(query):
+    """일상 표현의 검색용 연결. 현금/교통 종류의 공제 적격성을 확정하지 않는다."""
+    if not isinstance(query, str) or not query.strip() or len(query) > 1000:
+        raise ValueError("평가 질의를 확인해주세요.")
+    text = re.sub(r"\s+", " ", query)
+    for pattern, replacement in [
+        (r"방값|방세", "월세"),
+        (r"체크(?!카드)(?=\s*(?:로|결제|를|한|지출))", "체크카드"),
+        (r"영수증\s*(?:받은|발급받은)\s*현금", "현금영수증 여부 확인이 필요한 현금"),
+        (r"교통비", "대중교통 해당 여부 확인이 필요한 교통 지출"),
+        (r"애가|아이들이", "자녀가"),
+        (r"(?<!이)상한", "한도"),
+    ]:
+        text = re.sub(pattern, replacement, text)
+    return text
+
+
+def classify_question(query):
+    """명시적 기능+질문 목적을 조합한다. 불명확한 표현은 검색 전에 보류한다."""
+    if not isinstance(query, str) or not query.strip() or len(query) > 1000:
+        raise ValueError("평가 질의를 확인해주세요.")
+    text = normalize_question(query)
+    excluded = r"법인카드|매입세액|부가가치세|필요경비|양도소득세|임대사업자|상가.*임대|카드\s*(?:발급|추천|분실신고|재발급|할부수수료)|월세.*(?:소송|퇴거)|청약.*(?:당첨확률|분양일정)|대출.*금리|보증금.*반환|(?:호텔|숙박).*방값|(?:출장|사업).*교통비"
+    if re.search(excluded, query + " " + text):
+        if re.search(r"말고|아니라|아닌|제외하고", text):
+            return {
+                "status": "INSUFFICIENT_EVIDENCE",
+                "topics": [],
+                "reason": "지원 범위와 다른 업무의 대조·부정 질문은 확인 필요",
+                "facets": [],
+            }
+        return {
+            "status": "OUT_OF_SCOPE",
+            "topics": [],
+            "reason": "초기 근로자 연말정산 공제와 다른 업무 목적",
+            "facets": [],
+        }
+    families = {
+        "RENT": r"월세|집세|임차료|집주인.{0,12}(?:보낸|납부|낸)",
+        "CARD": r"카드|현금영수증|전통시장|대중교통|문화비|문화체육|도서.*구입",
+        "HOUSING_SAVING": r"청약|주택마련저축|무주택확인서",
+    }
+    topics = [name for name, pattern in families.items() if re.search(pattern, text)]
+    purpose = r"공제|연말정산|연말.{0,8}(?:빼|돌려|정산)|세금|환급|돌려받|소득세|총급여|무주택|세대주|배우자|자녀|한도|납입|해지|추징|기준|자격|요건|조건|적용|개정|부칙|증빙|증명서|규정"
+    if not topics or not re.search(purpose, text):
+        return {
+            "status": "INSUFFICIENT_EVIDENCE",
+            "topics": topics,
+            "reason": "지원 기능 또는 공제 질문 목적을 명확히 확인할 수 없음",
+            "facets": [],
+        }
+    facets = []
+    for name, pattern in {
+        "LIMIT": r"한도|공제율|얼마|계산 기준",
+        "DEFINITION": r"정의|나이|기본공제|중복",
+        "APPLICATION": r"언제|시행|지급분|가입분|개정|부칙|적용",
+        "DOCUMENT": r"증빙|증명서|서류|확인서",
+    }.items():
+        if re.search(pattern, text):
+            facets.append(name)
+    return {
+        "status": "IN_SCOPE",
+        "topics": topics,
+        "reason": "지원 기능과 공제 질문 목적 확인; 법적 적용은 미검증",
+        "facets": facets,
+        "normalizedQuery": text,
+        "normalizationDoesNotVerifyEligibility": True,
+    }
 
 
 def select_candidates(chunks, drafts, *, mode="initial"):

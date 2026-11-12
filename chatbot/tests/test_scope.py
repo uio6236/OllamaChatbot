@@ -11,7 +11,7 @@ from app.rag.elasticsearch_documents import (
 )
 from app.rag.loader import digest
 from app.rag.pipeline import canonical
-from app.rag.scope import select_candidates, validate_selection
+from app.rag.scope import classify_question, select_candidates, validate_selection
 
 
 def selection_fixture():
@@ -152,3 +152,81 @@ def test_fastapi_graph_does_not_import_evaluation_store():
                     "app.rag.elasticsearch_store",
                     "app.rag.elasticsearch_documents",
                 }
+
+
+@pytest.mark.parametrize(
+    "query,topic",
+    [
+        ("매달 집주인에게 보낸 돈 연말에 돌려받을 수 있나요?", "RENT"),
+        ("체크카드로 쓴 돈도 세금에서 빼주나요?", "CARD"),
+        ("대중교통 사용분 규정은 어디에 있나요?", "CARD"),
+        ("무주택확인서 제출 조건은?", "HOUSING_SAVING"),
+        ("청약통장 넣은 돈 소득공제는?", "HOUSING_SAVING"),
+        ("카드 소득공제 영수증을 분실했는데 증빙 조건은?", "CARD"),
+    ],
+)
+def test_feature_and_purpose_with_paraphrases(query, topic):
+    decision = classify_question(query)
+    assert decision["status"] == "IN_SCOPE"
+    assert topic in decision["topics"]
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "카드 발급 받을 때 소득 조건은?",
+        "법인카드 매입세액 공제 방법은?",
+        "사업자의 상가 임대료 필요경비 공제는?",
+        "주택 임대사업자 양도소득세 감면 조건은?",
+        "청약 당첨확률을 높이는 방법은?",
+        "월세 소송 비용은?",
+        "보증금 반환 세금은?",
+    ],
+)
+def test_non_tax_settlement_intent_even_with_feature_word(query):
+    assert classify_question(query)["status"] == "OUT_OF_SCOPE"
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "카드",
+        "주택",
+        "자녀 정의가 언제 바뀌었나요?",
+        "법인카드 말고 개인 카드 소득공제는?",
+    ],
+)
+def test_ambiguous_or_negated_contrast_is_held(query):
+    assert classify_question(query)["status"] == "INSUFFICIENT_EVIDENCE"
+
+
+@pytest.mark.parametrize(
+    "query,topic",
+    [
+        ("월급쟁이가 방값 낸 것도 연말에 빼주나요?", "RENT"),
+        ("체크로 결제한 지출도 소득공제에 포함되나요?", "CARD"),
+        ("영수증 받은 현금 지출도 연말정산 공제인가요?", "CARD"),
+        ("교통비 사용금액의 연말 공제 규정은?", "CARD"),
+    ],
+)
+def test_colloquial_feature_with_tax_intent(query, topic):
+    result = classify_question(query)
+    assert result["status"] == "IN_SCOPE" and topic in result["topics"]
+    assert result["normalizationDoesNotVerifyEligibility"]
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "출장 교통비 환급 규정은?",
+        "호텔 방값 할인 방법은?",
+        "사업 교통비 필요경비 공제는?",
+    ],
+)
+def test_aliases_keep_non_settlement_expenses_out(query):
+    assert classify_question(query)["status"] == "OUT_OF_SCOPE"
+
+
+def test_multiple_features_not_forced_to_one():
+    result = classify_question("방값과 청약 납입을 연말정산에서 같이 설명해 주세요")
+    assert set(result["topics"]) == {"RENT", "HOUSING_SAVING"}

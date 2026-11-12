@@ -1,0 +1,31 @@
+{
+  "datasetVersion": "independent-rag-v1",
+  "frozenBeforeRetrieval": true,
+  "purpose": "검색 실행 전에 작성한 신규 표현. 위치 정답은 법적 적용 정답이 아니다. 검색 결과를 보고 문항이나 기대 의도를 바꾸지 않는다.",
+  "questions": [
+    {"id":"IR-01","topic":"RENT","query":"급여가 높은 직장인도 집세를 세금에서 빼나요?","expectedIntent":"IN_SCOPE","title":"조세특례제한법","article":"제95조의2","anchor":"총급여"},
+    {"id":"IR-02","topic":"RENT","query":"주말부부라 각각 월세를 내는데 배우자도 신청 가능한가요?","expectedIntent":"IN_SCOPE","title":"조세특례제한법","article":"제95조의2","anchor":"배우자"},
+    {"id":"IR-03","topic":"RENT","query":"아이 많은 집은 넓은 월세집이어도 세금 공제를 받나요?","expectedIntent":"IN_SCOPE","title":"조세특례제한법 시행령","article":"제95조","anchor":"기준시가"},
+    {"id":"IR-04","topic":"RENT","query":"월급쟁이가 방값 낸 것도 연말에 빼주나요?","expectedIntent":"IN_SCOPE","title":"조세특례제한법","article":"제95조의2","anchor":"월세"},
+    {"id":"IR-05","topic":"RENT","query":"월세 공제를 할 때 주소가 어디로 되어 있어야 하죠?","expectedIntent":"IN_SCOPE","title":"조세특례제한법 시행령","article":"제95조","anchor":"주소"},
+    {"id":"IR-06","topic":"RENT","query":"개정 전에 낸 월세도 새 배우자 조건에 들어가나요?","expectedIntent":"IN_SCOPE","unresolved":true},
+    {"id":"IR-07","topic":"RENT","query":"상가 월세를 사업 필요경비로 처리하려면요?","expectedIntent":"OUT_OF_SCOPE","outside":true},
+    {"id":"IR-08","topic":"RENT","query":"부부가 따로 살면 얼마나 돌려받죠?","expectedIntent":"INSUFFICIENT_EVIDENCE","unresolved":true},
+    {"id":"IC-01","topic":"CARD","query":"체크로 결제한 것도 연말정산 소득공제에 들어가요?","expectedIntent":"IN_SCOPE","title":"조세특례제한법","article":"제126조의2","anchor":"공제"},
+    {"id":"IC-02","topic":"CARD","query":"영수증 받은 현금 지출은 총급여 기준을 넘겨야 공제돼요?","expectedIntent":"IN_SCOPE","title":"조세특례제한법","article":"제126조의2","anchor":"총급여"},
+    {"id":"IC-03","topic":"CARD","query":"애가 둘이면 카드로 쓴 돈의 공제 상한도 달라지나요?","expectedIntent":"IN_SCOPE","title":"조세특례제한법","article":"제126조의2","anchor":"자녀"},
+    {"id":"IC-04","topic":"CARD","query":"부양 자녀가 다른 사람 기본공제에 들어가면 카드 한도는요?","expectedIntent":"IN_SCOPE","title":"조세특례제한법 시행령","article":"제121조의2","anchor":"기본공제"},
+    {"id":"IC-05","topic":"CARD","query":"교통비 쓴 돈을 연말에 빼고 싶어요. 공제 규정이 있나요?","expectedIntent":"IN_SCOPE","title":"조세특례제한법","article":"제126조의2","anchor":"대중교통"},
+    {"id":"IC-06","topic":"CARD","query":"연초에 사용한 카드에도 개정 자녀 조건이 소급되나요?","expectedIntent":"IN_SCOPE","unresolved":true},
+    {"id":"IC-07","topic":"CARD","query":"회사 법인카드의 부가가치세 환급은 어떻게 해요?","expectedIntent":"OUT_OF_SCOPE","outside":true},
+    {"id":"IC-08","topic":"CARD","query":"카드랑 청약 납입을 연말정산에서 함께 설명해 주세요.","expectedIntent":"IN_SCOPE","unresolved":true},
+    {"id":"IH-01","topic":"HOUSING_SAVING","query":"청약통장에 넣은 돈도 연봉이 높으면 공제를 못 받나요?","expectedIntent":"IN_SCOPE","title":"조세특례제한법","article":"제87조","anchor":"총급여"},
+    {"id":"IH-02","topic":"HOUSING_SAVING","query":"무주택인 배우자가 낸 주택청약 금액의 공제 조건을 알려 주세요.","expectedIntent":"IN_SCOPE","title":"조세특례제한법","article":"제87조","anchor":"배우자"},
+    {"id":"IH-03","topic":"HOUSING_SAVING","query":"청약통장을 깨면 돌려받은 세금을 다시 내나요?","expectedIntent":"IN_SCOPE","title":"조세특례제한법","article":"제87조","anchor":"해지"},
+    {"id":"IH-04","topic":"HOUSING_SAVING","query":"주택마련저축 납입액을 증명할 서류는 뭘 내나요?","expectedIntent":"IN_SCOPE","title":"조세특례제한법 시행규칙","article":"제34조","anchor":"납입증명서"},
+    {"id":"IH-05","topic":"HOUSING_SAVING","query":"주택청약 공제용 무주택확인서는 제출 시점이 있나요?","expectedIntent":"IN_SCOPE","title":"조세특례제한법 시행령","article":"제81조","anchor":"무주택"},
+    {"id":"IH-06","topic":"HOUSING_SAVING","query":"배우자 청약 공제가 예전에 가입한 통장에도 적용돼요?","expectedIntent":"IN_SCOPE","unresolved":true},
+    {"id":"IH-07","topic":"HOUSING_SAVING","query":"청약 당첨확률을 올리기 위한 납입 전략은요?","expectedIntent":"OUT_OF_SCOPE","outside":true},
+    {"id":"IH-08","topic":"HOUSING_SAVING","query":"집 관련 돈은 전부 빼주는 건가요?","expectedIntent":"INSUFFICIENT_EVIDENCE","unresolved":true}
+  ]
+}

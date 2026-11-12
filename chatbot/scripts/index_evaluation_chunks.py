@@ -17,12 +17,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--selection", type=Path, required=True)
     parser.add_argument("--reuse", action="store_true")
+    parser.add_argument(
+        "--profile", choices=["baseline", "quality-v2"], default="baseline"
+    )
     args = parser.parse_args()
     store = None
     try:
         selection = json.loads(args.selection.read_text(encoding="utf-8"))
-        documents = evaluation_documents(selection)
-        store = EvaluationStore(selection["selectionHash"])
+        documents = evaluation_documents(selection, profile=args.profile)
+        store = EvaluationStore(selection["selectionHash"], profile=args.profile)
         result = {
             "server": store.health(),
             **store.index_documents(documents, reuse=args.reuse),

@@ -2,11 +2,39 @@
 
 희망환급의 Python FastAPI 기반 AI 챗봇 서버입니다. 연말정산·청년 세제 혜택 안내를 위한 근거 기반 질의응답을 개발합니다.
 
-현재 Health·ChatOllama 연결·내부 상담/추천 API·토큰 인증·PDF 전처리·검수 도구가 구현되어 있습니다. **Elasticsearch 검색과 실제 RAG 답변 연동은 미구현**이며, 정상 인증·유효 입력의 내부 POST도 현재 `503 RAG_NOT_READY`를 반환합니다.
+현재 Health·ChatOllama 연결·내부 상담/추천 API·토큰 인증·PDF 전처리·검수 도구와 **격리된 Elasticsearch BM25 평가 검색→Gemma 생성 CLI**가 구현되어 있습니다. 카드 자녀별 한도에 대해서는 별도 버전의 **원문 선택·인용 평가**도 제공합니다. 운영 검색·사용자 상담 RAG는 활성화하지 않았으며 내부 POST는 `503 RAG_NOT_READY`를 유지합니다. 원문 인용 평가의 성공은 자유 생성 답변의 정확성이나 법령 적용 승인을 뜻하지 않습니다.
 
 ## 1. 현재 구현·검증 상태
 
-아래 검증 결과는 [기존 작업 기록](docs/history.md)에 근거합니다. 이번 문서 정리에서 테스트·모델 호출·전처리·검수 CLI를 재실행하지 않았습니다.
+아래 검증 결과는 [작업 기록](docs/history.md)에 근거합니다. 카드 최소 구성에서는 ES 7.10.1과 Gemma 3를 실제 호출했습니다. 법령 승인과 전체 재전처리는 수행하지 않았습니다.
+
+### 카드 최소 원문 인용 평가 실행
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 -B scripts/evaluate_focused_card.py
+# 모델 없이 검색·자료 구성만 확인
+.\.venv\Scripts\python.exe -X utf8 -B scripts/evaluate_focused_card.py --no-model
+```
+
+기존 33개 평가 인덱스와 원문·v3 초안을 먼저 검증하고, 카드 한도에 필요한 6개 영역을 별도 `hope-rag-eval-*` 인덱스에 만듭니다. 같은 자료·설정은 같은 ID를 사용하며 기존 색인은 일치할 때만 재사용하고 덮어쓰지 않습니다. 자료는 `data/processed/focused-card-materials/<hash>/material.json`, 비교 결과는 `focused-card-evaluations/<hash>/evaluation.json`에 보존합니다. 새 의존성은 없습니다.
+
+Gemma는 금액을 자유롭게 다시 작성하지 않고 원문 ID를 선택합니다. 한도·자녀 정의를 모두 선택해야 하며, 표시되는 문장은 실제 원문 그대로입니다. 기본 자격·추가한도·법률/시행령 시행일도 필수 문맥으로 함께 반환합니다. 적용 검증은 미완료이므로 `answerUseAllowed=false`, 귀속연도 null, 검증 false를 유지합니다. 기존 숫자 검증기를 완화한 기능이 아닙니다.
+
+원문 선택 비교에서 입력은 24,228→6,355 bytes, 기존 자유 생성은 MODEL_WITHHELD, 원문 선택 구성은 EXTRACTIVE_EVALUATION이었습니다. 동일 기준의 답변 정확도 향상률로 비교할 수 없습니다. 실행 중 개선에 사용한 사례이므로 개발 회귀 결과입니다.
+
+### 최소 자연어 설명 평가
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 -B scripts/evaluate_focused_card.py --natural
+```
+
+이 모드는 **기존 자료·인덱스를 읽기만 하며 결과를 JSON 표준 출력으로 반환**합니다. 새 결과 파일·자료·색인을 생성하지 않습니다. 기존 원문 선택 모드의 저장 동작은 유지합니다.
+
+Gemma가 원문을 선택한 뒤 한 문장의 도입문을 작성합니다. 서버는 원문에서 급여 구간·자녀 수별 한도·자녀 정의를 추출하여 도입문과 함께 표시합니다. 모델 도입문에는 수치를 허용하지 않고, 서버가 파싱한 수치만 표시합니다. 급여·자녀 수에 따른 기본 한도라는 좁은 관계 문법과 실제 인용을 검사하며, 일반 자연어 전체의 의미를 검증하는 기능은 아닙니다. 조건·예외 및 귀속연도 검증은 별개입니다.
+
+고정한 개발 8문항 중 3건, 수정 후 처음 실행한 별도 최종 점검 4문항 중 2건이 NATURAL_EVALUATION입니다. 모델이 보류하거나 관계를 잘못 넓히면 HOLD입니다. ‘외동’ 표현은 범위 판별에서 누락됐습니다. 전체 카드 상담 완료나 일반화 성능을 주장하지 않습니다. 사용자 표시/운영 사용은 모두 false, RAG_NOT_READY를 유지합니다.
+
+현재 기본 pytest **303 passed/5 skipped**, ES·Gemma·focused·natural 통합 플래그를 모두 활성화한 전체 실행 **308 passed**입니다. 원시 출력·질문별 판정 요약은 docs/07_테스트케이스.md에 기록합니다.
 
 | 항목 | 구현 상태 | 실제 검증 범위와 한계 |
 |---|---|---|
@@ -16,12 +44,13 @@
 | PDF 8개 추출·전처리·구조별 청킹 | 완료 | 실제 처리·재현성·무결성 검증 기록 있음. 전체 시각 영역·표 의미·법적 정확성 검수 완료는 아님 |
 | 검수 대기열·v3 영역별 승인 게이트·내보내기 | 완료 | Mock 승인/회수·변조 차단·실제 기존 자료 제외 검증 기록 있음. 실제 법령 승인과는 별개 |
 | 실제 자료 수동 구조 검수·적용 검증·사용 승인 | 미완료 | 기록상 3,133개 HOLD, 승인 0개. 적용 귀속연도 null/false 유지 |
-| Elasticsearch BM25 매핑·색인·검색 | 미구현 | 실제 검색·성능 미검증 |
-| 실제 검색 결과 기반 RAG 답변 | 미구현 | 검색·모델 결합 경로는 테스트 의존성 대체로 검증. 실제 세법·답변 품질 미검증 |
+| Elasticsearch BM25 평가 검색 | 완료 | 로컬 ES 7.10.1, 초기 33개. 고정 23문항 Recall@5 1.0/MRR@10 0.9348. 운영 사용·법적 적용 승인은 아님 |
+| 평가용 검색→근거 묶음→실제 Gemma 연결 | 구현·호출 확인 | 독립 검색 15문항 Recall@5 0.7333/MRR@10 0.5778, 의도 20/24 일치. 실제 생성 3건은 수치 검사로 보류 |
+| 운영 사용자용 RAG 답변 | 미구현 | 평가 경로의 실제 모델 호출은 확인했지만 생성 품질·법적 승인·운영 연결은 미완료 |
 | Spring·React 연동, 상담·추천·출처 저장 | 미구현 | 실제 서버 간 HTTP·Oracle·사용자용 응답 봉투/errorId 통합 미검증 |
 | 다중 워커 전체 동시성·추론 강제 취소・색인 회수 동기화 | 미구현 | 운영 검증 미수행 |
 
-최신 코드 검증 기록은 2026-11-11 `review-policy-v3` 작업의 **pytest 171개, Ruff check·format --check 통과**입니다. 날짜별 테스트 수와 실행 조건은 history에 보존합니다.
+최신 코드 검증은 2026-11-12 **ES·Ollama 통합 포함 pytest 250개, Ruff check·format --check 통과(84개 파일)**입니다. 기본 실행은 247개 통과·실서버 전용 3개 건너뜀입니다. 날짜별 테스트 수와 실행 조건은 history에 보존합니다. 검색 범위·프로필·실행 명령·정답 기준과 모델 보류 사례는 [RAG 설계](docs/04_RAG_설계.md)를 참고합니다.
 
 ## 2. 시스템 역할과 프로젝트 구조
 
@@ -66,7 +95,7 @@ OllamaChatbot/
 
 ## 3. 개발환경 준비
 
-Python 3.11.9, Git, Python 개발 IDE를 준비합니다. 서버는 FastAPI·Uvicorn·Pydantic, 모델 연결은 LangChain ChatOllama·Ollama의 `gemma3:4b`, 전처리는 PyMuPDF 1.26.7을 사용합니다. 초기 검색 방향은 Elasticsearch BM25이며 아직 구현되지 않았습니다.
+Python 3.11.9, Git, Python 개발 IDE를 준비합니다. 서버는 FastAPI·Uvicorn·Pydantic, 모델 연결은 LangChain ChatOllama·Ollama의 `gemma3:4b`, 전처리는 PyMuPDF 1.26.7을 사용합니다. 격리된 평가 검색은 기존 httpx 0.28.1 REST와 로컬 Elasticsearch 7.10.1을 사용합니다. 신규 검색 패키지·플러그인은 추가하지 않았습니다.
 
 ### 저장소와 작업 디렉터리
 
@@ -225,7 +254,7 @@ $evidenceRoot = '공식근거스냅샷폴더'
 
 검수 출력은 `data/processed/reviews/`, 내보내기는 `data/processed/exports/`의 해시별 경로에 저장하며 기존 출력을 덮어쓰지 않습니다. 초기 원장은 HOLD이고 승인 0건도 정상입니다. 평가용 `userAnswerAllowed=false` 자료는 사용자 답변 근거로 사용하지 않습니다.
 
-운영 내보내기는 **review-policy-v3**만 허용합니다. 승인 대상별 원문 영역·법령 적용·사용 범위·공식 RULE/APPLICATION 근거·필수 문맥·조건·해시·최신 보류/반려/회수 이력을 검증합니다. v2 원장을 자동 승격하지 않으며 기록상 기존 3,133개 입력은 모두 `POLICY_VERSION_MISMATCH`로 제외되었습니다. 출력은 `approved-context-v3`의 `regions[]`이며 검색 어댑터·Elasticsearch·API 연결은 미구현입니다.
+운영 내보내기는 **review-policy-v3**만 허용합니다. 승인 대상별 원문 영역·법령 적용·사용 범위·공식 RULE/APPLICATION 근거·필수 문맥·조건·해시·최신 보류/반려/회수 이력을 검증합니다. v2 원장을 자동 승격하지 않으며 기록상 기존 3,133개 입력은 모두 `POLICY_VERSION_MISMATCH`로 제외되었습니다. 출력은 `approved-context-v3`의 `regions[]`이며 운영 검색 어댑터·운영 Elasticsearch·API 연결은 미구현입니다. 평가 CLI는 별도 승인된 33개 UNVERIFIED 자료만 사용하고 사용자 답변과 연결하지 않습니다.
 
 2025 안내서·종전/개정 혼합 요약·좌동은 현재 v3 운영 출력에서 보류합니다. 조건·문맥 목록의 법적 완전성, 공식 자료 취득 진위·이용 조건·개별 공제 자격은 사람 확인이 필요합니다. 검토자 로그인·전자서명·배포 색인/캐시 회수 동기화는 미구현입니다. 실제 VERIFIED/APPROVED 반영은 별도 승인 대상이며 Mock 승인은 실제 자료 승인과 무관합니다.
 
@@ -247,12 +276,12 @@ python -m ruff format --check .
 python -m ruff format .
 ```
 
-단위 테스트는 외부 LLM 없이 실행하도록 모델·검색기를 대체합니다. 마지막 기록의 171개 통과는 실제 Elasticsearch·Spring·Oracle·세법 정확성 검증 완료를 뜻하지 않습니다. 이번 문서 작업에서는 위 명령을 재실행하지 않았습니다.
+단위 테스트는 외부 LLM 없이 실행하도록 모델·검색기를 대체합니다. 실서버 전용 테스트는 `RUN_RAG_EVAL_INTEGRATION=1`, `RAG_EVAL_SELECTION=<초기 scope.json>`을 지정하면 기존 baseline/quality-v2 평가 인덱스만 읽습니다. `RUN_RAG_GENERATION_INTEGRATION=1`은 실제 로컬 Ollama 호출도 수행합니다. 실제 테스트 통과는 Spring·Oracle 연동·답변 품질·법적 정확성·운영 사용 승인 완료를 뜻하지 않습니다.
 
 ## 11. 남은 작업과 미합의 설계
 
 - 실제 공식 근거 확보, 수동 구조·법령 적용·사용 승인, 복잡한 표·각주·조건·문맥 검수
-- 승인 자료를 보존하는 검색 어댑터, Elasticsearch BM25 매핑·색인·검색·평가·회수 동기화
+- 승인 자료를 보존하는 운영 검색 어댑터·승인 회수 동기화, 독립 평가 질문·관련성 라벨 확충
 - 실제 RAG 답변·출처·세법 및 생성 숫자 품질 검증
 - Spring·React HTTP 연동, 회원 소유권·대화/추천 저장·실패·시간초과 통합 검증
 
@@ -278,3 +307,11 @@ python -m ruff format .
 | [pyproject.toml](pyproject.toml) | Ruff·pytest 설정 |
 
 기능 기준은 팀 [희망환급 기능명세서 v1.13](https://docs.google.com/spreadsheets/d/1qW5xjOhPqrWkCn9KLUUbylKfsFJCacfOAgBiXm27v9w/edit), ERD v4.1, 팀 공식 API 명세서입니다. 로컬 기능명세 PDF의 정확한 v1.13 동일성은 기존 기록상 미확인입니다. 기존 설계 문서의 초기안과 후속 확정 사항을 구분하고 충돌은 확인 후 해소합니다.
+<!-- rag-blocking-regression-2026-11-12 -->
+## 평가 RAG 차단 원인 개선 결과
+
+구어체 정규화와 질문 중심 근거 위치 표시를 추가했습니다. 정규화는 공제 자격 검증이 아니며 전체 필수 문맥을 그대로 전달합니다. 실제로 확인한 그룹 인용(`[E1, E2]`) 오탐만 수정하고 수치·날짜·미검증 적용 제한은 유지했습니다.
+
+동일 24문항의 개발 회귀 결과는 범위 24/24, Recall@5 100%, MRR@10 0.7778입니다. 수정에 사용한 질문이므로 독립 평가 결과가 아닙니다. 실제 생성 답변은 여전히 0/3 통과했습니다. 운영 승인 0건과 RAG_NOT_READY를 유지합니다.
+
+진단 자료: `data/processed/rag-diagnostics/2026-11-12-blocking-analysis/`. 원시 입력·출력, 문장 대조, 그룹 인용 오탐 증거와 전후 비교를 별도 보존했습니다.

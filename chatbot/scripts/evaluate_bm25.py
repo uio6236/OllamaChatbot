@@ -8,7 +8,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.rag.elasticsearch_documents import evaluation_documents  # noqa: E402
-from app.rag.elasticsearch_store import EvaluationSearchError, EvaluationStore  # noqa: E402
+from app.rag.elasticsearch_store import (  # noqa: E402
+    QUALITY_POLICY,  # noqa: E402
+    EvaluationSearchError,
+    EvaluationStore,
+)
 from app.rag.loader import digest  # noqa: E402
 from app.rag.pipeline import canonical  # noqa: E402
 
@@ -252,9 +256,184 @@ def evaluate(questions, store):
     }
 
 
+def summarize_rows(rows):
+    scored = [r for r in rows if r["status"] == "TEXT_LOCATOR"]
+    return {
+        "scoredQuestions": len(scored),
+        "recallAt5": sum(r["recallAt5"] for r in scored) / len(scored)
+        if scored
+        else None,
+        "mrrAt10": sum(r["reciprocalRank"] for r in scored) / len(scored)
+        if scored
+        else None,
+        "perTopic": {
+            topic: {
+                "recallAt5": sum(r["recallAt5"] for r in scored if r["topic"] == topic)
+                / sum(r["topic"] == topic for r in scored),
+                "mrrAt10": sum(
+                    r["reciprocalRank"] for r in scored if r["topic"] == topic
+                )
+                / sum(r["topic"] == topic for r in scored),
+            }
+            for topic in sorted({r["topic"] for r in scored})
+        },
+        "outOfScopeExposureCount": sum(bool(r["outOfScopeExposure"]) for r in rows),
+        "inScopeBlocked": [
+            r["id"]
+            for r in rows
+            if r["status"] != "OUT_OF_SCOPE"
+            and r.get("retrievalStatus") in {"OUT_OF_SCOPE", "INSUFFICIENT_EVIDENCE"}
+        ],
+        "scoredQuestionBlocks": [
+            r["id"]
+            for r in rows
+            if r["status"] == "TEXT_LOCATOR"
+            and r.get("retrievalStatus") in {"OUT_OF_SCOPE", "INSUFFICIENT_EVIDENCE"}
+        ],
+        "unresolvedQuestionHolds": [
+            r["id"]
+            for r in rows
+            if r["status"] == "UNDETERMINED"
+            and r.get("retrievalStatus") in {"OUT_OF_SCOPE", "INSUFFICIENT_EVIDENCE"}
+        ],
+        "comparisonExposureCount": sum(
+            any(
+                h.get("sourceKind") in {"AMENDMENT_SUMMARY", "AMENDMENT_TEXT"}
+                for h in r["hits"]
+            )
+            for r in rows
+        ),
+        "questions": rows,
+    }
+
+
+def compare_quality(questions, store, baseline):
+    # 동일 질문/정답만 사용한다. 미확정 정답을 새로 채우지 않는다.
+    if digest(canonical(questions).encode()) != baseline["questionsHash"]:
+        raise ValueError("기존 질문·정답 기준이 변경되었습니다.")
+    arms = {}
+    for name, view, ranking, scope in [
+        ("same_query", "all", "baseline", False),
+        ("weights_only", "all", "weighted", False),
+        ("scope_only", "all", "baseline", True),
+        ("body", "body", "weighted", True),
+        ("context", "context", "weighted", True),
+        ("comparison", "comparison", "weighted", True),
+    ]:
+        rows = []
+        for question in questions:
+            retrieved = store.search_evaluation(
+                question["query"], view=view, ranking=ranking, enforce_scope=scope
+            )
+            row = score_question(question, retrieved["hits"])
+            row["retrievalStatus"] = retrieved["status"]
+            row["intent"] = retrieved["intent"]
+            row["comparisonOnly"] = view == "comparison"
+            row["answerUseAllowed"] = False
+            # 파일 해시 차이를 법령 버전의 충돌과 혼동하지 않는다.
+            row["multipleOfficialVersions"] = any(
+                len(
+                    {
+                        v
+                        for item in [h, *h.get("variants", [])]
+                        for v in item.get("legalVersions", [])
+                    }
+                )
+                > 1
+                for h in retrieved["hits"]
+            )
+            rows.append(row)
+        arms[name] = summarize_rows(rows)
+    before = {r["id"]: r for r in baseline["questions"]}
+    arms["context"]["top5Regressions"] = [
+        r["id"]
+        for r in arms["context"]["questions"]
+        if r["recallAt5"] is not None and r["recallAt5"] < before[r["id"]]["recallAt5"]
+    ]
+    arms["context"]["rankRegressions"] = [
+        r["id"]
+        for r in arms["context"]["questions"]
+        if r["reciprocalRank"] is not None
+        and r["reciprocalRank"] < before[r["id"]]["reciprocalRank"]
+    ]
+    return {
+        "status": "EXECUTED",
+        "experiment": "quality-v2",
+        "retrievalConfiguration": QUALITY_POLICY,
+        "baselineMetrics": {
+            k: baseline[k] for k in ["recallAt5", "mrrAt10", "scoredQuestions"]
+        },
+        "arms": arms,
+        "metricUnit": "unchanged deduplicated article group; not legal correctness",
+        "legalApproval": "NOT_PERFORMED",
+    }
+
+
+def card_diagnostics(store, questions, baseline):
+    question = next(q for q in questions if q["id"] == "CARD-05")
+    old = next(q for q in baseline["questions"] if q["id"] == "CARD-05")
+    analysis = {
+        field: store.request(
+            "POST",
+            f"/{store.index}/_analyze",
+            json={"field": field, "text": question["query"]},
+        )
+        for field in ["content", "content.ko", "articleTitle.ko"]
+    }
+    explanations = []
+    for hit in [
+        old["hits"][0],
+        next(h for h in old["hits"] if h["duplicateGroup"] in question["goldGroups"]),
+    ]:
+        explained = store.request(
+            "POST",
+            f"/{store.index}/_explain/{hit['id']}",
+            json={
+                "query": {
+                    "multi_match": {
+                        "query": question["query"],
+                        "fields": [
+                            "content",
+                            "content.ko",
+                            "article^4",
+                            "documentTitle^2",
+                        ],
+                    }
+                }
+            },
+        )
+        explanations.append(
+            {
+                "id": hit["id"],
+                "characters": len(hit["content"]),
+                "explanation": explained.get("explanation"),
+                "matched": explained.get("matched"),
+            }
+        )
+    return {
+        "query": question["query"],
+        "analysis": analysis,
+        "sameQueryExplanations": explanations,
+        "beforeHits": [
+            {
+                k: h.get(k)
+                for k in ["score", "id", "article", "documentTitle", "textRole"]
+            }
+            | {"characters": len(h["content"])}
+            for h in old["hits"]
+        ],
+        "lengthNote": "기존 상위 결과·토큰을 보존한다. 길이만으로 점수 희석을 단정하지 않는다.",
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--selection", type=Path, required=True)
+    parser.add_argument(
+        "--compare-to",
+        type=Path,
+        help="기존 평가 파일의 질문/정답을 고정하여 quality-v2 비교",
+    )
     parser.add_argument(
         "--output-root",
         type=Path,
@@ -262,17 +441,39 @@ def main():
     )
     args = parser.parse_args()
     selection = json.loads(args.selection.read_text(encoding="utf-8"))
-    documents = evaluation_documents(selection)
+    documents = evaluation_documents(
+        selection, profile="quality-v2" if args.compare_to else "baseline"
+    )
     questions = make_questions(documents)
-    store = EvaluationStore(selection["selectionHash"])
+    baseline = (
+        json.loads(args.compare_to.read_text(encoding="utf-8"))
+        if args.compare_to
+        else None
+    )
+    if baseline and (
+        baseline.get("status") != "EXECUTED"
+        or baseline["selectionHash"] != selection["selectionHash"]
+    ):
+        parser.error("같은 선정 결과로 실행한 기존 평가가 필요합니다.")
+    store = EvaluationStore(
+        selection["selectionHash"],
+        profile="quality-v2" if args.compare_to else "baseline",
+    )
     try:
         server = store.health()
         integrity = store.verify(documents)
         result = {
-            **evaluate(questions, store),
+            **(
+                compare_quality(questions, store, baseline)
+                if baseline
+                else evaluate(questions, store)
+            ),
             "server": server,
             "indexIntegrity": integrity,
         }
+        if baseline:
+            result["diagnostics"] = card_diagnostics(store, questions, baseline)
+            result["baselineReportHash"] = digest(args.compare_to.read_bytes())
     except EvaluationSearchError as exc:
         result = {
             "status": "NOT_EXECUTED",
